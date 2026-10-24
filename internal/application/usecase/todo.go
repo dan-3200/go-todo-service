@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"app/internal/application/dto"
 	"app/internal/application/ports"
@@ -19,6 +20,10 @@ func NewTodoService(repository ports.TodoRepository) *TodoService {
 }
 
 func (s *TodoService) Create(ctx context.Context, input dto.CreateTodoInput) (int64, error) {
+	if err := validateCreateInput(input); err != nil {
+		return 0, err
+	}
+
 	todo, err := entity.NewTodo(input.Title, input.Content)
 	if err != nil {
 		return 0, err
@@ -61,6 +66,10 @@ func (s *TodoService) List(ctx context.Context) ([]dto.TodoOutput, error) {
 }
 
 func (s *TodoService) Update(ctx context.Context, rawID int64, input dto.UpdateTodoInput) error {
+	if err := validateUpdateInput(input); err != nil {
+		return err
+	}
+
 	id, err := vo.NewTodoID(rawID)
 	if err != nil {
 		return err
@@ -101,4 +110,27 @@ func toOutput(todo entity.Todo) dto.TodoOutput {
 		Status:    todo.Status,
 		CreatedAt: todo.CreatedAt,
 	}
+}
+
+func validateCreateInput(input dto.CreateTodoInput) error {
+	if strings.TrimSpace(input.Title) == "" {
+		return fmt.Errorf("título é obrigatório")
+	}
+	if strings.TrimSpace(input.Content) == "" {
+		return fmt.Errorf("conteúdo é obrigatório")
+	}
+	return nil
+}
+
+func validateUpdateInput(input dto.UpdateTodoInput) error {
+	if input.Title == nil && input.Content == nil && input.Status == nil {
+		return fmt.Errorf("ao menos um campo deve ser informado")
+	}
+	if input.Title != nil && strings.TrimSpace(*input.Title) == "" {
+		return fmt.Errorf("título é obrigatório")
+	}
+	if input.Content != nil && strings.TrimSpace(*input.Content) == "" {
+		return fmt.Errorf("conteúdo é obrigatório")
+	}
+	return nil
 }
