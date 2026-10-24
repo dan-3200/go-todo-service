@@ -3,6 +3,7 @@ package telemetry
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -18,7 +19,6 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.43.0"
-	"go.uber.org/zap"
 	"google.golang.org/grpc/credentials/insecure"
 
 	"app/internal/infrastructure/config"
@@ -53,15 +53,19 @@ func SetupTelemetry(ctx context.Context, cfg config.TelemetryConfig) (func() err
 	})
 }
 
-func LogTelemetryInitialization(logger *zap.Logger, collectorAddr string, err error) {
+func LogTelemetryInitialization(ctx context.Context, logger *slog.Logger, collectorAddr string, err error) {
+	if logger == nil {
+		return
+	}
+
 	if strings.TrimSpace(collectorAddr) == "" {
-		logger.Info("OpenTelemetry desabilitado: collector não configurado")
+		logger.InfoContext(ctx, "OpenTelemetry desabilitado: collector não configurado")
 		return
 	}
 	if err != nil {
-		logger.Warn("falha ao inicializar OpenTelemetry; continuando sem telemetria",
-			zap.String("collectorAddr", collectorAddr),
-			zap.Error(err),
+		logger.WarnContext(ctx, "falha ao inicializar OpenTelemetry; continuando sem telemetria",
+			slog.String("collector_addr", collectorAddr),
+			slog.Any("error", err),
 		)
 	}
 }
