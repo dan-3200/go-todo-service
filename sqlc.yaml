@@ -8,6 +8,7 @@ sql:
         package: "sqlc"
         out: "internal/infrastructure/postgres/sqlc"
         sql_package: "database/sql"
+        sql_driver: "github.com/jackc/pgx/v5"
         emit_empty_slices: true
         overrides:
           - column: "todo.id"

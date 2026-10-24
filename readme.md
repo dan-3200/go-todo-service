@@ -13,7 +13,7 @@ O projeto foi criado com foco em aprendizado, aplicando princípios de design co
 ## Tecnologias
 - `Golang 1.27`
 - `Gin (framework http)`
-- `PostgreSQL`
+- `PostgreSQL (pgx)`
 - `Docker`
 
 ## Estrutura do projeto (Clean Architecture)

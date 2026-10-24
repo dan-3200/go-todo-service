@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	_ "github.com/lib/pq"
+	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"app/internal/infrastructure/config"
 )
@@ -19,7 +19,7 @@ func Open(settings config.PostgresConfig) (*sql.DB, error) {
 		settings.Database,
 	)
 
-	connection, err := sql.Open("postgres", uri)
+	connection, err := sql.Open("pgx", uri)
 	if err != nil {
 		return nil, fmt.Errorf("Erro ao conectar com o banco de dados: %v", err)
 	}
