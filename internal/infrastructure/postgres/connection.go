@@ -3,19 +3,20 @@ package postgres
 import (
 	"database/sql"
 	"fmt"
-	"os"
 
 	_ "github.com/lib/pq"
+
+	"app/internal/infrastructure/config"
 )
 
-func OpenFromEnvironment() (*sql.DB, error) {
+func Open(settings config.PostgresConfig) (*sql.DB, error) {
 	uri := fmt.Sprintf(
 		"postgres://%s:%s@%s:%s/%s?sslmode=disable",
-		os.Getenv("POSTGRES_USER"),
-		os.Getenv("POSTGRES_PASSWORD"),
-		os.Getenv("POSTGRES_HOST"),
-		os.Getenv("POSTGRES_PORT"),
-		os.Getenv("POSTGRES_DB"),
+		settings.User,
+		settings.Password,
+		settings.Host,
+		settings.Port,
+		settings.Database,
 	)
 
 	connection, err := sql.Open("postgres", uri)

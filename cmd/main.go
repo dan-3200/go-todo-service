@@ -2,24 +2,20 @@ package main
 
 import (
 	"log"
-	"os"
-
-	"github.com/joho/godotenv"
 
 	"app/internal/application/usecase"
+	"app/internal/infrastructure/config"
 	httpadapter "app/internal/infrastructure/http"
 	"app/internal/infrastructure/postgres"
 )
 
-func init() {
-	if err := godotenv.Load(); err != nil {
-		log.Println("[.env error]: ", err)
-		return
-	}
-}
-
 func main() {
-	connection, err := postgres.OpenFromEnvironment()
+	settings, err := config.Load()
+	if err != nil {
+		log.Println("[.env error]: ", err)
+	}
+
+	connection, err := postgres.Open(settings.Postgres)
 	if err != nil {
 		log.Println("[error ao conectar com o banco de dados]:", err)
 		return
@@ -36,12 +32,7 @@ func main() {
 	handler := httpadapter.NewTodoHandler(service)
 	server := httpadapter.NewServer(handler, connection)
 
-	port := os.Getenv("API_PORT")
-	if port == "" {
-		port = "8200"
-	}
-
-	if err := server.Run(":" + port); err != nil {
+	if err := server.Run(":" + settings.Server.Port); err != nil {
 		log.Println("[error ao iniciar servidor]:", err)
 	}
 }

@@ -5,7 +5,7 @@
 
 # executar código
 run: 
-	go run .
+	go run ./cmd
 
 # hot-reload
 dev: 

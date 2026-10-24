@@ -27,6 +27,7 @@ O projeto foi criado com foco em aprendizado, aplicando princípios de design co
 │   │   ├── ports                # Contratos dos adapters
 │   │   └── usecase              # Casos de uso
 │   └── infrastructure           # Adapters externos
+│       ├── config               # Configuração de ambiente
 │       ├── http                 # Handlers, DTOs, rotas e servidor Gin
 │       └── postgres             # Adapter PostgreSQL e código SQLc gerado
 │
@@ -45,7 +46,7 @@ O projeto foi criado com foco em aprendizado, aplicando princípios de design co
 │   ├── Dockerfile
 │   └── docker-compose.yml
 │
-├── main.go                      # Ponto de entrada e composition root
+├── cmd/main.go                  # Ponto de entrada e composition root
 ├── go.mod                       # Dependências
 ├── go.sum                       # Hash das dependências
 ├── .env.example                 # Variáveis de ambiente
@@ -79,7 +80,7 @@ git clone https://github.com/DAN-3200/go-todo-service.git
 cd go-todo-service
 make db-main
 make db-schema
-go run .
+go run ./cmd
 ```
 
 > [!IMPORTANT]
@@ -97,7 +98,7 @@ make <tag>
 
 # executar codigo
 run: 
-   go run .
+   go run ./cmd
 
 # hot-reload
 dev: 
