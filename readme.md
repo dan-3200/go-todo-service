@@ -136,6 +136,10 @@ db-schema:
 > [!IMPORTANT]
 > Para execução do docker, certifique-se de configurar o arquivo `.env` com base no `.env.example`.
 
+> [!IMPORTANT]
+> Os testes de integração PostgreSQL usam Testcontainers e iniciam uma instância
+> efêmera de `postgres:16-alpine`. Portanto, `go test ./...` requer Docker disponível.
+
 
 ## API Endpoints
 | Route                   | Descrição                                  |
