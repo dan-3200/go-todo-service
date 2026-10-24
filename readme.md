@@ -141,6 +141,31 @@ db-schema:
 | <kbd>PATCH /todo/:id</kbd>| Editar uma tarefa existente por ID   |
 | <kbd>DELETE /todo/:id</kbd>| Remover uma tarefa existente por ID     |
 
+## Formato das respostas
+
+Toda resposta da API usa um envelope com o status HTTP, timestamp e dados ou erro.
+
+```json
+{
+  "success": true,
+  "status": 200,
+  "data": {},
+  "timestamp": "2026-10-24T12:00:00Z"
+}
+```
+
+```json
+{
+  "success": false,
+  "status": 400,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "título é obrigatório"
+  },
+  "timestamp": "2026-10-24T12:00:00Z"
+}
+```
+
 > [Link publico do Postman](https://www.postman.com/dan-3200/workspace/publico/collection/43029232-dfa83f1a-5ff2-47f7-a0ab-7cf1d0adb96c?action=share&creator=43029232)
 
 ## Licença

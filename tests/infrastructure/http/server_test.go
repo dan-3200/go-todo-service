@@ -74,6 +74,31 @@ func performRequest(server http.Handler, method, target string, body []byte) *ht
 	return response
 }
 
+func requireEnvelope(t *testing.T, response *httptest.ResponseRecorder, status int, success bool) map[string]any {
+	t.Helper()
+	require.Equal(t, status, response.Code)
+
+	var payload map[string]any
+	require.NoError(t, json.Unmarshal(response.Body.Bytes(), &payload))
+	require.Equal(t, success, payload["success"])
+	require.Equal(t, float64(status), payload["status"])
+
+	timestamp, ok := payload["timestamp"].(string)
+	require.True(t, ok)
+	_, err := time.Parse(time.RFC3339Nano, timestamp)
+	require.NoError(t, err)
+
+	return payload
+}
+
+func requireError(t *testing.T, payload map[string]any, code, message string) {
+	t.Helper()
+	errorPayload, ok := payload["error"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, code, errorPayload["code"])
+	require.Equal(t, message, errorPayload["message"])
+}
+
 func TestCreateTodoContract(t *testing.T) {
 	repository := &fakeRepository{}
 	server := newTestServer(repository, fakePinger{})
@@ -82,19 +107,23 @@ func TestCreateTodoContract(t *testing.T) {
 		"title":"TITLE","content":"CONTENT","status":true
 	}`))
 
-	require.Equal(t, http.StatusOK, response.Code)
-	require.JSONEq(t, `{"id":10,"msg":"ToDo Criado"}`, response.Body.String())
+	payload := requireEnvelope(t, response, http.StatusOK, true)
+	data := payload["data"].(map[string]any)
+	require.Equal(t, float64(10), data["id"])
+	require.Equal(t, "ToDo Criado", data["message"])
 	require.Equal(t, "title", repository.created.Title)
 	require.Equal(t, "content", repository.created.Content)
 	require.False(t, repository.created.Status)
 }
 
-func TestCreateTodoBindingErrorReturnsInternalServerError(t *testing.T) {
+func TestCreateTodoBindingErrorUsesErrorEnvelope(t *testing.T) {
 	server := newTestServer(&fakeRepository{}, fakePinger{})
 
 	response := performRequest(server, http.MethodPost, "/todo", []byte(`{"title":"only title"}`))
 
-	require.Equal(t, http.StatusInternalServerError, response.Code)
+	payload := requireEnvelope(t, response, http.StatusBadRequest, false)
+	requireError(t, payload, "INVALID_REQUEST", "corpo da requisição inválido")
+	require.NotEmpty(t, payload["error"].(map[string]any)["details"])
 }
 
 func TestGetTodoContract(t *testing.T) {
@@ -106,19 +135,22 @@ func TestGetTodoContract(t *testing.T) {
 
 	response := performRequest(server, http.MethodGet, "/todo/1", nil)
 
-	require.Equal(t, http.StatusOK, response.Code)
-	require.JSONEq(t, `{
-		"id":1,"title":"title","content":"content","status":true,
-		"created_at":"2026-10-24T12:00:00Z"
-	}`, response.Body.String())
+	payload := requireEnvelope(t, response, http.StatusOK, true)
+	data := payload["data"].(map[string]any)
+	require.Equal(t, float64(1), data["id"])
+	require.Equal(t, "title", data["title"])
+	require.Equal(t, "content", data["content"])
+	require.Equal(t, true, data["status"])
+	require.Equal(t, "2026-10-24T12:00:00Z", data["created_at"])
 }
 
-func TestInvalidPathIDReturnsInternalServerError(t *testing.T) {
+func TestInvalidPathIDUsesErrorEnvelope(t *testing.T) {
 	server := newTestServer(&fakeRepository{}, fakePinger{})
 
 	response := performRequest(server, http.MethodGet, "/todo/not-a-number", nil)
 
-	require.Equal(t, http.StatusInternalServerError, response.Code)
+	payload := requireEnvelope(t, response, http.StatusBadRequest, false)
+	requireError(t, payload, "INVALID_ID", "id inválido")
 }
 
 func TestListTodoContractUsesEmptyArray(t *testing.T) {
@@ -126,8 +158,10 @@ func TestListTodoContractUsesEmptyArray(t *testing.T) {
 
 	response := performRequest(server, http.MethodGet, "/todo", nil)
 
-	require.Equal(t, http.StatusOK, response.Code)
-	require.JSONEq(t, `[]`, response.Body.String())
+	payload := requireEnvelope(t, response, http.StatusOK, true)
+	data, ok := payload["data"].([]any)
+	require.True(t, ok)
+	require.Empty(t, data)
 }
 
 func TestUpdateTodoContract(t *testing.T) {
@@ -140,11 +174,20 @@ func TestUpdateTodoContract(t *testing.T) {
 		"title":"New Title","status":true
 	}`))
 
-	require.Equal(t, http.StatusOK, response.Code)
-	require.Equal(t, "ToDo atualizado", response.Body.String())
+	payload := requireEnvelope(t, response, http.StatusOK, true)
+	require.Equal(t, "ToDo atualizado", payload["data"].(map[string]any)["message"])
 	require.Equal(t, "New Title", repository.updated.Title)
 	require.Equal(t, "content", repository.updated.Content)
 	require.True(t, repository.updated.Status)
+}
+
+func TestUpdateEmptyInputUsesValidationError(t *testing.T) {
+	server := newTestServer(&fakeRepository{}, fakePinger{})
+
+	response := performRequest(server, http.MethodPatch, "/todo/1", []byte(`{}`))
+
+	payload := requireEnvelope(t, response, http.StatusBadRequest, false)
+	requireError(t, payload, "VALIDATION_ERROR", "ao menos um campo deve ser informado")
 }
 
 func TestDeleteTodoContract(t *testing.T) {
@@ -153,8 +196,8 @@ func TestDeleteTodoContract(t *testing.T) {
 
 	response := performRequest(server, http.MethodDelete, "/todo/8", nil)
 
-	require.Equal(t, http.StatusOK, response.Code)
-	require.Equal(t, "ToDo deletado", response.Body.String())
+	payload := requireEnvelope(t, response, http.StatusOK, true)
+	require.Equal(t, "ToDo deletado", payload["data"].(map[string]any)["message"])
 	require.Equal(t, vo.TodoID(8), repository.deletedID)
 }
 
@@ -162,41 +205,25 @@ func TestHealthAndReadinessContracts(t *testing.T) {
 	t.Run("healthy", func(t *testing.T) {
 		server := newTestServer(&fakeRepository{}, fakePinger{})
 
-		health := performRequest(server, http.MethodGet, "/healthz", nil)
-		ready := performRequest(server, http.MethodGet, "/readiness", nil)
+		health := requireEnvelope(t, performRequest(server, http.MethodGet, "/healthz", nil), http.StatusOK, true)
+		ready := requireEnvelope(t, performRequest(server, http.MethodGet, "/readiness", nil), http.StatusOK, true)
 
-		require.Equal(t, http.StatusOK, health.Code)
-		require.JSONEq(t, `{"status":"healthy"}`, health.Body.String())
-		require.Equal(t, http.StatusOK, ready.Code)
-		require.JSONEq(t, `{"status":"ready","postgres":true}`, ready.Body.String())
+		require.Equal(t, "healthy", health["data"].(map[string]any)["status"])
+		require.Equal(t, "ready", ready["data"].(map[string]any)["status"])
+		require.Equal(t, true, ready["data"].(map[string]any)["postgres"])
 	})
 
 	t.Run("database unavailable", func(t *testing.T) {
 		server := newTestServer(&fakeRepository{}, fakePinger{err: errors.New("offline")})
 
-		response := performRequest(server, http.MethodGet, "/readiness", nil)
-
-		require.Equal(t, http.StatusServiceUnavailable, response.Code)
-		require.JSONEq(t, `{"postgres":false}`, response.Body.String())
+		payload := requireEnvelope(t, performRequest(server, http.MethodGet, "/readiness", nil), http.StatusServiceUnavailable, false)
+		requireError(t, payload, "DATABASE_UNAVAILABLE", "banco de dados indisponível")
 	})
 }
 
-func TestTodoResponseHasExpectedJSONFields(t *testing.T) {
-	server := newTestServer(&fakeRepository{todo: &entity.Todo{ID: 1}}, fakePinger{})
-	response := performRequest(server, http.MethodGet, "/todo/1", nil)
+func TestUnknownRouteUsesErrorEnvelope(t *testing.T) {
+	server := newTestServer(&fakeRepository{}, fakePinger{})
 
-	var payload map[string]any
-	require.NoError(t, json.Unmarshal(response.Body.Bytes(), &payload))
-	require.ElementsMatch(t,
-		[]string{"id", "title", "content", "status", "created_at"},
-		mapKeys(payload),
-	)
-}
-
-func mapKeys(values map[string]any) []string {
-	keys := make([]string, 0, len(values))
-	for key := range values {
-		keys = append(keys, key)
-	}
-	return keys
+	payload := requireEnvelope(t, performRequest(server, http.MethodGet, "/unknown", nil), http.StatusNotFound, false)
+	requireError(t, payload, "ROUTE_NOT_FOUND", "rota não encontrada")
 }

@@ -6,6 +6,8 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+
+	"app/internal/infrastructure/http/response"
 )
 
 type DatabasePinger interface {
@@ -13,7 +15,9 @@ type DatabasePinger interface {
 }
 
 func NewServer(handler *TodoHandler, database DatabasePinger) *gin.Engine {
-	engine := gin.Default()
+	engine := gin.New()
+	engine.HandleMethodNotAllowed = true
+	engine.Use(gin.Logger(), gin.CustomRecovery(handlePanic))
 
 	engine.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},
@@ -28,19 +32,33 @@ func NewServer(handler *TodoHandler, database DatabasePinger) *gin.Engine {
 
 	engine.GET("/readiness", func(ctx *gin.Context) {
 		if database.Ping() != nil {
-			ctx.JSON(http.StatusServiceUnavailable, gin.H{"postgres": false})
+			response.Error(ctx, http.StatusServiceUnavailable, "DATABASE_UNAVAILABLE", "banco de dados indisponível", nil)
 			return
 		}
 
-		ctx.JSON(http.StatusOK, gin.H{
-			"status":   "ready",
-			"postgres": true,
-		})
+		response.Success(ctx, http.StatusOK, readinessResponse{Status: "ready", Postgres: true})
 	})
 
 	engine.GET("/healthz", func(ctx *gin.Context) {
-		ctx.JSON(http.StatusOK, gin.H{"status": "healthy"})
+		response.Success(ctx, http.StatusOK, healthResponse{Status: "healthy"})
+	})
+
+	engine.NoRoute(func(ctx *gin.Context) {
+		response.Error(ctx, http.StatusNotFound, "ROUTE_NOT_FOUND", "rota não encontrada", nil)
+	})
+
+	engine.NoMethod(func(ctx *gin.Context) {
+		response.Error(ctx, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "método não permitido", nil)
 	})
 
 	return engine
+}
+
+type healthResponse struct {
+	Status string `json:"status"`
+}
+
+type readinessResponse struct {
+	Status   string `json:"status"`
+	Postgres bool   `json:"postgres"`
 }

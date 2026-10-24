@@ -8,6 +8,7 @@ import (
 
 	"app/internal/application/dto"
 	"app/internal/application/usecase"
+	"app/internal/infrastructure/http/response"
 )
 
 type TodoHandler struct {
@@ -21,7 +22,7 @@ func NewTodoHandler(service *usecase.TodoService) *TodoHandler {
 func (h *TodoHandler) Create(ctx *gin.Context) {
 	request, err := bindJSON[createTodoRequest](ctx)
 	if err != nil {
-		ctx.String(http.StatusInternalServerError, err.Error())
+		handleBindingError(ctx, err)
 		return
 	}
 
@@ -30,61 +31,61 @@ func (h *TodoHandler) Create(ctx *gin.Context) {
 		Content: request.Content,
 	})
 	if err != nil {
-		ctx.String(http.StatusInternalServerError, err.Error())
+		handleServiceError(ctx, err)
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"msg": "ToDo Criado", "id": id})
+	response.Success(ctx, http.StatusOK, createTodoResponse{Message: "ToDo Criado", ID: id})
 }
 
 func (h *TodoHandler) Get(ctx *gin.Context) {
 	paramID := ctx.Param("id")
 	if paramID == "" {
-		ctx.String(http.StatusBadRequest, "Id não fornecido")
+		response.Error(ctx, http.StatusBadRequest, "INVALID_ID", "id não fornecido", nil)
 		return
 	}
 
 	id, err := strconv.Atoi(paramID)
 	if err != nil {
-		ctx.String(http.StatusInternalServerError, err.Error())
+		response.Error(ctx, http.StatusBadRequest, "INVALID_ID", "id inválido", err.Error())
 		return
 	}
 
 	todo, err := h.service.Get(ctx.Request.Context(), int64(id))
 	if err != nil {
-		ctx.String(http.StatusInternalServerError, err.Error())
+		handleServiceError(ctx, err)
 		return
 	}
 
-	ctx.JSON(http.StatusOK, toTodoResponse(*todo))
+	response.Success(ctx, http.StatusOK, toTodoResponse(*todo))
 }
 
 func (h *TodoHandler) List(ctx *gin.Context) {
 	todos, err := h.service.List(ctx.Request.Context())
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
+		handleServiceError(ctx, err)
 		return
 	}
 
-	ctx.JSON(http.StatusOK, toTodoResponseList(todos))
+	response.Success(ctx, http.StatusOK, toTodoResponseList(todos))
 }
 
 func (h *TodoHandler) Update(ctx *gin.Context) {
 	paramID := ctx.Param("id")
 	if paramID == "" {
-		ctx.String(http.StatusBadRequest, "Id não fornecido")
+		response.Error(ctx, http.StatusBadRequest, "INVALID_ID", "id não fornecido", nil)
 		return
 	}
 
 	request, err := bindJSON[updateTodoRequest](ctx)
 	if err != nil {
-		ctx.String(http.StatusInternalServerError, err.Error())
+		handleBindingError(ctx, err)
 		return
 	}
 
 	id, err := strconv.Atoi(paramID)
 	if err != nil {
-		ctx.String(http.StatusInternalServerError, err.Error())
+		response.Error(ctx, http.StatusBadRequest, "INVALID_ID", "id inválido", err.Error())
 		return
 	}
 
@@ -94,32 +95,32 @@ func (h *TodoHandler) Update(ctx *gin.Context) {
 		Status:  request.Status,
 	})
 	if err != nil {
-		ctx.String(http.StatusInternalServerError, err.Error())
+		handleServiceError(ctx, err)
 		return
 	}
 
-	ctx.String(http.StatusOK, "ToDo atualizado")
+	response.Success(ctx, http.StatusOK, messageResponse{Message: "ToDo atualizado"})
 }
 
 func (h *TodoHandler) Delete(ctx *gin.Context) {
 	paramID := ctx.Param("id")
 	if paramID == "" {
-		ctx.String(http.StatusBadRequest, "Id não fornecido")
+		response.Error(ctx, http.StatusBadRequest, "INVALID_ID", "id não fornecido", nil)
 		return
 	}
 
 	id, err := strconv.Atoi(paramID)
 	if err != nil {
-		ctx.String(http.StatusInternalServerError, err.Error())
+		response.Error(ctx, http.StatusBadRequest, "INVALID_ID", "id inválido", err.Error())
 		return
 	}
 
 	if err := h.service.Delete(ctx.Request.Context(), int64(id)); err != nil {
-		ctx.String(http.StatusInternalServerError, err.Error())
+		handleServiceError(ctx, err)
 		return
 	}
 
-	ctx.String(http.StatusOK, "ToDo deletado")
+	response.Success(ctx, http.StatusOK, messageResponse{Message: "ToDo deletado"})
 }
 
 func bindJSON[T any](ctx *gin.Context) (*T, error) {

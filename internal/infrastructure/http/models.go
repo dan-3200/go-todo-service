@@ -26,6 +26,15 @@ type todoResponse struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+type createTodoResponse struct {
+	Message string `json:"message"`
+	ID      int64  `json:"id"`
+}
+
+type messageResponse struct {
+	Message string `json:"message"`
+}
+
 func toTodoResponse(todo dto.TodoOutput) todoResponse {
 	return todoResponse{
 		ID:        todo.ID,
