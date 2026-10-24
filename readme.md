@@ -16,6 +16,13 @@ O projeto foi criado com foco em aprendizado, aplicando princípios de design co
 - `PostgreSQL (pgx)`
 - `Docker`
 
+## Integração contínua
+
+O workflow GitHub Actions executa testes, `go vet` e build da aplicação em
+cada push e pull request. A imagem Docker é construída apenas em pushes na
+branch `main`. Os testes incluem o PostgreSQL efêmero iniciado pelo
+Testcontainers.
+
 ## Estrutura do projeto (Clean Architecture)
 ```
 ├── internal
