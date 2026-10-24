@@ -18,6 +18,7 @@ func NewServer(handler *TodoHandler, database DatabasePinger) *gin.Engine {
 	engine := gin.New()
 	engine.HandleMethodNotAllowed = true
 	engine.Use(gin.Logger(), gin.CustomRecovery(handlePanic))
+	engine.Use(suppressHealthCheckTelemetry())
 
 	engine.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},

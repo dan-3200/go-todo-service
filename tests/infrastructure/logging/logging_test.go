@@ -60,6 +60,21 @@ func TestOTelHandlerEmitsSlogRecord(t *testing.T) {
 	require.Equal(t, int64(42), attributes["todo.id"].AsInt64())
 }
 
+func TestOTelHandlerSkipsTelemetrySuppressedContext(t *testing.T) {
+	exporter := &logExporter{}
+	provider := sdklog.NewLoggerProvider(
+		sdklog.WithProcessor(sdklog.NewSimpleProcessor(exporter)),
+	)
+	t.Cleanup(func() {
+		require.NoError(t, provider.Shutdown(context.Background()))
+	})
+
+	logger := slog.New(logging.NewOTelHandler(provider.Logger("app"), slog.LevelInfo))
+	logger.InfoContext(logging.WithoutTelemetry(context.Background()), "health check")
+
+	require.Empty(t, exporter.records)
+}
+
 type logExporter struct {
 	records []sdklog.Record
 }

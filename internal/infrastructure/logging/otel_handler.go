@@ -2,112 +2,14 @@ package logging
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
-	"os"
 	"strings"
 	"time"
 
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	otellog "go.opentelemetry.io/otel/log"
-	"go.opentelemetry.io/otel/trace"
 )
-
-// New creates the application's structured logger. The handler can be replaced
-// without changing callers that use slog.Logger.
-func New(serviceName string) *slog.Logger {
-	handler := NewMultiHandler(
-		NewTraceHandler(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-			Level: slog.LevelInfo,
-		})),
-		NewOTelHandler(otel.Logger("app"), slog.LevelInfo),
-	)
-
-	return slog.New(handler).With(slog.String("service", serviceName))
-}
-
-// MultiHandler writes a log record to each enabled handler.
-type MultiHandler struct {
-	handlers []slog.Handler
-}
-
-func NewMultiHandler(handlers ...slog.Handler) *MultiHandler {
-	return &MultiHandler{handlers: handlers}
-}
-
-func (h *MultiHandler) Enabled(ctx context.Context, level slog.Level) bool {
-	for _, handler := range h.handlers {
-		if handler.Enabled(ctx, level) {
-			return true
-		}
-	}
-	return false
-}
-
-func (h *MultiHandler) Handle(ctx context.Context, record slog.Record) error {
-	var errs []error
-	for _, handler := range h.handlers {
-		if !handler.Enabled(ctx, record.Level) {
-			continue
-		}
-		if err := handler.Handle(ctx, record); err != nil {
-			errs = append(errs, err)
-		}
-	}
-	return errors.Join(errs...)
-}
-
-func (h *MultiHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	handlers := make([]slog.Handler, len(h.handlers))
-	for index, handler := range h.handlers {
-		handlers[index] = handler.WithAttrs(attrs)
-	}
-	return NewMultiHandler(handlers...)
-}
-
-func (h *MultiHandler) WithGroup(name string) slog.Handler {
-	handlers := make([]slog.Handler, len(h.handlers))
-	for index, handler := range h.handlers {
-		handlers[index] = handler.WithGroup(name)
-	}
-	return NewMultiHandler(handlers...)
-}
-
-// TraceHandler decorates another slog handler with the active OpenTelemetry
-// trace and span identifiers, when the log call carries a traced context.
-type TraceHandler struct {
-	next slog.Handler
-}
-
-func NewTraceHandler(next slog.Handler) *TraceHandler {
-	return &TraceHandler{next: next}
-}
-
-func (h *TraceHandler) Enabled(ctx context.Context, level slog.Level) bool {
-	return h.next.Enabled(ctx, level)
-}
-
-func (h *TraceHandler) Handle(ctx context.Context, record slog.Record) error {
-	spanContext := trace.SpanContextFromContext(ctx)
-	if spanContext.IsValid() {
-		record.AddAttrs(
-			slog.String("trace_id", spanContext.TraceID().String()),
-			slog.String("span_id", spanContext.SpanID().String()),
-		)
-	}
-
-	return h.next.Handle(ctx, record)
-}
-
-func (h *TraceHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	return NewTraceHandler(h.next.WithAttrs(attrs))
-}
-
-func (h *TraceHandler) WithGroup(name string) slog.Handler {
-	return NewTraceHandler(h.next.WithGroup(name))
-}
 
 // OTelHandler converts slog records to OpenTelemetry log records. The
 // OpenTelemetry SDK associates the active trace/span from ctx during export.
@@ -128,13 +30,17 @@ func NewOTelHandler(logger otellog.Logger, level slog.Level) *OTelHandler {
 }
 
 func (h *OTelHandler) Enabled(ctx context.Context, level slog.Level) bool {
-	if level < h.level {
+	if telemetrySuppressed(ctx) || level < h.level {
 		return false
 	}
 	return h.logger.Enabled(ctx, otellog.EnabledParameters{Severity: toOTelSeverity(level)})
 }
 
 func (h *OTelHandler) Handle(ctx context.Context, record slog.Record) error {
+	if telemetrySuppressed(ctx) {
+		return nil
+	}
+
 	otelRecord := otellog.Record{}
 	otelRecord.SetTimestamp(record.Time)
 	otelRecord.SetSeverity(toOTelSeverity(record.Level))
