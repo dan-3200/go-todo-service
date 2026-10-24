@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"log"
 	"os"
 
@@ -30,11 +29,6 @@ func main() {
 	repository, err := postgres.NewTodoRepository(connection)
 	if err != nil {
 		log.Println("[error ao inicializar repositório]:", err)
-		return
-	}
-
-	if err := repository.CreateSchema(context.Background()); err != nil {
-		log.Println("[error ao criar tabela]:", err)
 		return
 	}
 

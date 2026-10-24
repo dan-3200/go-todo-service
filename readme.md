@@ -28,7 +28,13 @@ O projeto foi criado com foco em aprendizado, aplicando princípios de design co
 │   │   └── usecase              # Casos de uso
 │   └── infrastructure           # Adapters externos
 │       ├── http                 # Handlers, DTOs, rotas e servidor Gin
-│       └── postgres             # Conexão, schema e repositório PostgreSQL
+│       └── postgres             # Adapter PostgreSQL e código SQLc gerado
+│
+├── database                      # Fonte de verdade SQL
+│   ├── schema.sql                # Schema PostgreSQL
+│   └── queries/todo.sql          # Queries usadas pelo SQLc
+│
+├── sqlc.yaml                     # Configuração de geração SQLc
 │
 ├── tests                         # Testes centralizados por camada
 │   ├── application
@@ -47,7 +53,8 @@ O projeto foi criado com foco em aprendizado, aplicando princípios de design co
 
 O diretório ``domain`` concentra entidades e value objects sem depender de banco, HTTP ou frameworks.
 ``application`` separa DTOs, portas e casos de uso, enquanto
-``infrastructure`` implementa os adaptadores Gin e PostgreSQL.
+``infrastructure`` implementa os adaptadores Gin e PostgreSQL. O adapter PostgreSQL
+usa código tipado gerado pelo SQLc a partir dos arquivos em ``database``.
 
 As dependências apontam para dentro: infraestrutura depende da aplicação e do domínio,
 e a aplicação depende apenas do domínio.
@@ -67,8 +74,14 @@ type Todo struct {
 ```bash
 git clone https://github.com/DAN-3200/go-todo-service.git
 cd go-todo-service
+make db-main
+make db-schema
 go run .
 ```
+
+> [!IMPORTANT]
+> A API não cria mais a tabela no startup. Aplique `database/schema.sql` com
+> `make db-schema` antes de iniciar o serviço, inclusive ao usar um volume PostgreSQL existente.
 ## Instrução de uso
 
 ```bash
@@ -91,6 +104,14 @@ dev:
 test: 
 	go test ./...
 
+# gerar código SQLc versionado
+generate:
+	go tool sqlc generate
+
+# validar schema e queries com SQLc
+sqlc-vet:
+	go tool sqlc vet
+
 # rodar banco principal no docker
 db-main:
 	docker compose -f 'docker-compose.yml' up -d --build 'database'
@@ -98,6 +119,10 @@ db-main:
  # rodar banco para tests (integração) no docker
 db-test:
 	docker compose -f 'docker-compose.yml' up -d --build 'db-test'
+
+# aplicar schema no banco principal
+db-schema:
+	docker compose exec -T database sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"' < database/schema.sql
 ```
 > [!IMPORTANT]
 > Para execução do docker, certifique-se de configurar o arquivo `.env` com base no `.env.example`.
