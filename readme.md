@@ -60,6 +60,11 @@ O diretório ``domain`` concentra entidades e value objects sem depender de banc
 ``infrastructure`` implementa os adaptadores Gin e PostgreSQL. O adapter PostgreSQL
 usa código tipado gerado pelo SQLc a partir dos arquivos em ``database``.
 
+Quando `OTEL_ENABLED=true`, a aplicação exporta traces, métricas de runtime e logs para o
+collector OTLP/gRPC configurado em `OTEL_EXPORTER_OTLP_ENDPOINT`. A conexão, o tempo de
+desligamento e a taxa de amostragem podem ser configurados por `OTEL_COLLECTOR_INSECURE`,
+`OTEL_SHUTDOWN_TIMEOUT` e `OTEL_TRACER_RATIO`.
+
 As dependências apontam para dentro: infraestrutura depende da aplicação e do domínio,
 e a aplicação depende apenas do domínio.
 

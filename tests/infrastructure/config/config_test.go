@@ -2,6 +2,7 @@ package config_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -15,6 +16,12 @@ func TestFromEnvironmentLoadsAllSettings(t *testing.T) {
 	t.Setenv("POSTGRES_HOST", "host")
 	t.Setenv("POSTGRES_PORT", "5433")
 	t.Setenv("POSTGRES_DB", "todos")
+	t.Setenv("OTEL_ENABLED", "true")
+	t.Setenv("OTEL_SERVICE_NAME", "todo-api")
+	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "collector:4317")
+	t.Setenv("OTEL_COLLECTOR_INSECURE", "false")
+	t.Setenv("OTEL_SHUTDOWN_TIMEOUT", "10s")
+	t.Setenv("OTEL_TRACER_RATIO", "0.25")
 
 	settings := config.FromEnvironment()
 
@@ -26,12 +33,32 @@ func TestFromEnvironmentLoadsAllSettings(t *testing.T) {
 		Port:     "5433",
 		Database: "todos",
 	}, settings.Postgres)
+	require.Equal(t, config.TelemetryConfig{
+		Enabled:           true,
+		ServiceName:       "todo-api",
+		CollectorAddr:     "collector:4317",
+		CollectorInsecure: false,
+		ShutdownTimeout:   10 * time.Second,
+		TracerRatio:       0.25,
+	}, settings.Telemetry)
 }
 
 func TestFromEnvironmentUsesDefaultAPIPort(t *testing.T) {
 	t.Setenv("API_PORT", "")
+	t.Setenv("OTEL_ENABLED", "invalid")
+	t.Setenv("OTEL_SERVICE_NAME", "")
+	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "")
+	t.Setenv("OTEL_COLLECTOR_INSECURE", "invalid")
+	t.Setenv("OTEL_SHUTDOWN_TIMEOUT", "invalid")
+	t.Setenv("OTEL_TRACER_RATIO", "invalid")
 
 	settings := config.FromEnvironment()
 
 	require.Equal(t, "8200", settings.Server.Port)
+	require.False(t, settings.Telemetry.Enabled)
+	require.Equal(t, "go-todo-service", settings.Telemetry.ServiceName)
+	require.Equal(t, "localhost:4317", settings.Telemetry.CollectorAddr)
+	require.True(t, settings.Telemetry.CollectorInsecure)
+	require.Equal(t, 5*time.Second, settings.Telemetry.ShutdownTimeout)
+	require.Equal(t, 1.0, settings.Telemetry.TracerRatio)
 }

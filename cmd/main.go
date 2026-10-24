@@ -1,18 +1,33 @@
 package main
 
 import (
+	"context"
 	"log"
 
 	"app/internal/application/usecase"
 	"app/internal/infrastructure/config"
 	httpadapter "app/internal/infrastructure/http"
 	"app/internal/infrastructure/postgres"
+	"app/internal/infrastructure/telemetry"
 )
 
 func main() {
 	settings, err := config.Load()
 	if err != nil {
 		log.Println("[.env error]: ", err)
+	}
+
+	if settings.Telemetry.Enabled {
+		cleanup, err := telemetry.SetupTelemetry(context.Background(), settings.Telemetry)
+		if err != nil {
+			log.Println("[error ao inicializar telemetria]:", err)
+		} else {
+			defer func() {
+				if err := cleanup(); err != nil {
+					log.Println("[error ao desligar telemetria]:", err)
+				}
+			}()
+		}
 	}
 
 	connection, err := postgres.Open(settings.Postgres)

@@ -2,13 +2,16 @@ package config
 
 import (
 	"os"
+	"strconv"
+	"time"
 
 	"github.com/joho/godotenv"
 )
 
 type Config struct {
-	Server   ServerConfig
-	Postgres PostgresConfig
+	Server    ServerConfig
+	Postgres  PostgresConfig
+	Telemetry TelemetryConfig
 }
 
 type ServerConfig struct {
@@ -21,6 +24,22 @@ type PostgresConfig struct {
 	Host     string
 	Port     string
 	Database string
+}
+
+type TelemetryConfig struct {
+	Enabled           bool
+	ServiceName       string
+	CollectorAddr     string
+	CollectorInsecure bool
+	ShutdownTimeout   time.Duration
+	TracerRatio       float64
+}
+
+func (c TelemetryConfig) ShutdownTimeoutDuration() time.Duration {
+	if c.ShutdownTimeout <= 0 {
+		return 5 * time.Second
+	}
+	return c.ShutdownTimeout
 }
 
 func Load() (Config, error) {
@@ -40,7 +59,39 @@ func FromEnvironment() Config {
 			Port:     os.Getenv("POSTGRES_PORT"),
 			Database: os.Getenv("POSTGRES_DB"),
 		},
+		Telemetry: TelemetryConfig{
+			Enabled:           environmentBool("OTEL_ENABLED", false),
+			ServiceName:       environmentOrDefault("OTEL_SERVICE_NAME", "go-todo-service"),
+			CollectorAddr:     environmentOrDefault("OTEL_EXPORTER_OTLP_ENDPOINT", "localhost:4317"),
+			CollectorInsecure: environmentBool("OTEL_COLLECTOR_INSECURE", true),
+			ShutdownTimeout:   environmentDuration("OTEL_SHUTDOWN_TIMEOUT", 5*time.Second),
+			TracerRatio:       environmentFloat("OTEL_TRACER_RATIO", 1.0),
+		},
 	}
+}
+
+func environmentBool(key string, fallback bool) bool {
+	value, err := strconv.ParseBool(os.Getenv(key))
+	if err != nil {
+		return fallback
+	}
+	return value
+}
+
+func environmentDuration(key string, fallback time.Duration) time.Duration {
+	value, err := time.ParseDuration(os.Getenv(key))
+	if err != nil || value <= 0 {
+		return fallback
+	}
+	return value
+}
+
+func environmentFloat(key string, fallback float64) float64 {
+	value, err := strconv.ParseFloat(os.Getenv(key), 64)
+	if err != nil || value <= 0 || value > 1 {
+		return fallback
+	}
+	return value
 }
 
 func environmentOrDefault(key, fallback string) string {
