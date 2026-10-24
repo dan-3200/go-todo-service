@@ -1,0 +1,15 @@
+version: "2"
+sql:
+  - engine: "postgresql"
+    schema: "database/schema.sql"
+    queries: "database/queries"
+    gen:
+      go:
+        package: "sqlc"
+        out: "internal/infrastructure/postgres/sqlc"
+        sql_package: "database/sql"
+        sql_driver: "github.com/jackc/pgx/v5"
+        emit_empty_slices: true
+        overrides:
+          - column: "todo.id"
+            go_type: "int64"

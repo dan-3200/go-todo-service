@@ -11,61 +11,83 @@ API RESTful para gerenciamento de tarefas (ToDos), desenvolvida em Golang com o 
 O projeto foi criado com foco em aprendizado, aplicando princípios de design como SOLID e o padrão Singleton.
 
 ## Tecnologias
-- `Golang 1.24.1`
+- `Golang 1.27`
 - `Gin (framework http)`
-- `PostgreSQL`
+- `PostgreSQL (pgx)`
 - `Docker`
 
-## Estrutura do projeto (Inspirada em Clean Architecture)
+## Integração contínua
+
+O workflow GitHub Actions executa testes, `go vet` e build da aplicação em
+cada push e pull request. A imagem Docker é construída apenas em pushes na
+branch `main`. Os testes incluem o PostgreSQL efêmero iniciado pelo
+Testcontainers.
+
+## Estrutura do projeto (Clean Architecture)
 ```
 ├── internal
-│   ├── inner                    # Núcleo da aplicação (core)
-│   │   ├── entity               # Entidades / Domínio
-│   │   ├── usecase              # Casos de uso (Application Layer)
-│   │   ├── ports                # Interfaces (contratos)
-│   │   └── dto            		 # Modelos de input e output entre camadas
-│   │
-│   └── outer                    # Infraestrutura / Adapters
-│       ├── http                 # Camada de entrega (REST)
-│       │   ├── controller       # Controllers / Handlers
-│       │   └── server           # Setup do servidor e rotas
-│       │
-│       └── persistence          # Camada de dados
-│           ├── db               # Conexão com banco
-│           └── repository       # Implementação dos repositórios
+│   ├── domain                   # Regras de negócio
+│   │   ├── entity               # Entidades
+│   │   └── vo                   # Value objects
+│   ├── application              # Orquestração da aplicação
+│   │   ├── dto                  # Modelos de entrada e saída
+│   │   ├── ports                # Contratos dos adapters
+│   │   └── usecase              # Casos de uso
+│   └── infrastructure           # Adapters externos
+│       ├── config               # Configuração de ambiente
+│       ├── http                 # Handlers, DTOs, rotas e servidor Gin
+│       └── postgres             # Adapter PostgreSQL e código SQLc gerado
 │
-├── pkg                          # Pacotes reutilizáveis
-│   └── utils
+├── database                      # Fonte de verdade SQL
+│   ├── schema.sql                # Schema PostgreSQL
+│   └── queries/todo.sql          # Queries usadas pelo SQLc
 │
-├── tests                        # Testes automatizados
-│   ├── unit                     # Testes unitários
-│   └── integration              # Testes de integração
+├── sqlc.yaml                     # Configuração de geração SQLc
 │
-├── main.go                      # Ponto de entrada
+├── tests                         # Testes centralizados por camada
+│   ├── application
+│   ├── domain
+│   └── infrastructure
+│
+├── docker                        # Configuração de containers
+│   ├── Dockerfile
+│   └── docker-compose.yml
+│
+├── cmd/main.go                  # Ponto de entrada e composition root
 ├── go.mod                       # Dependências
 ├── go.sum                       # Hash das dependências
 ├── .env.example                 # Variáveis de ambiente
-├── docker-compose.yml           # Containers
 ├── Makefile                     # Automação
 └── README.md
 ```
 ---
 
-Separei o ``internal`` em ``inner`` e ``outer`` para isolar as regras de negócio da infraestrutura.
+O diretório ``domain`` concentra entidades e value objects sem depender de banco, HTTP ou frameworks.
+``application`` separa DTOs, portas e casos de uso, enquanto
+``infrastructure`` implementa os adaptadores Gin e PostgreSQL. O adapter PostgreSQL
+usa código tipado gerado pelo SQLc a partir dos arquivos em ``database``.
 
-O ``inner`` concentra o núcleo da aplicação (entidades, casos de uso e contratos), sem depender de banco, HTTP ou frameworks.
-O ``outer`` contém apenas os adaptadores (API, banco, servidor), que podem mudar sem afetar o core.
+O pool PostgreSQL é configurado por `POSTGRES_MAX_OPEN_CONNS`,
+`POSTGRES_MAX_IDLE_CONNS`, `POSTGRES_CONN_MAX_LIFETIME` e
+`POSTGRES_CONN_MAX_IDLE_TIME`. Os valores padrão são 10, 2, 30 minutos e
+5 minutos, respectivamente.
 
-Assim, reduzo acoplamento, facilito testes e mantenho o sistema independente de tecnologia.
+Quando `OTEL_ENABLED=true`, a aplicação exporta traces, métricas de runtime e logs para o
+collector OTLP/gRPC configurado em `OTEL_EXPORTER_OTLP_ENDPOINT`. A conexão, o tempo de
+desligamento e a taxa de amostragem podem ser configurados por `OTEL_COLLECTOR_INSECURE`,
+`OTEL_SHUTDOWN_TIMEOUT` e `OTEL_TRACER_RATIO`.
 
-### Entity ToDo
+As dependências apontam para dentro: infraestrutura depende da aplicação e do domínio,
+e a aplicação depende apenas do domínio.
+
+### Entity Todo
 ```golang
-type ToDo struct {
-	ID        int64     `json:"id"`
-	Title     string    `json:"title"`
-	Content   string    `json:"content"`
-	Status    bool      `json:"status"`
-	CreatedAt time.Time `json:"created_at"`
+type Todo struct {
+	ID        vo.TodoID
+	Title     string
+	Content   string
+	Status    bool
+	CreatedAt time.Time
 }
 ```
 
@@ -73,8 +95,14 @@ type ToDo struct {
 ```bash
 git clone https://github.com/DAN-3200/go-todo-service.git
 cd go-todo-service
-go run .
+make db-main
+make db-schema
+go run ./cmd
 ```
+
+> [!IMPORTANT]
+> A API não cria mais a tabela no startup. Aplique `database/schema.sql` com
+> `make db-schema` antes de iniciar o serviço, inclusive ao usar um volume PostgreSQL existente.
 ## Instrução de uso
 
 ```bash
@@ -87,7 +115,7 @@ make <tag>
 
 # executar codigo
 run: 
-   go run .
+   go run ./cmd
 
 # hot-reload
 dev: 
@@ -97,16 +125,32 @@ dev:
 test: 
 	go test ./...
 
+# gerar código SQLc versionado
+generate:
+	go tool sqlc generate
+
+# validar schema e queries com SQLc
+sqlc-vet:
+	go tool sqlc vet
+
 # rodar banco principal no docker
 db-main:
-	docker compose -f 'docker-compose.yml' up -d --build 'database'
+	docker compose -f 'docker/docker-compose.yml' up -d --build 'database'
 
  # rodar banco para tests (integração) no docker
 db-test:
-	docker compose -f 'docker-compose.yml' up -d --build 'db-test'
+	docker compose -f 'docker/docker-compose.yml' up -d --build 'db-test'
+
+# aplicar schema no banco principal
+db-schema:
+	docker compose -f 'docker/docker-compose.yml' exec -T database sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"' < database/schema.sql
 ```
 > [!IMPORTANT]
 > Para execução do docker, certifique-se de configurar o arquivo `.env` com base no `.env.example`.
+
+> [!IMPORTANT]
+> Os testes de integração PostgreSQL usam Testcontainers e iniciam uma instância
+> efêmera de `postgres:16-alpine`. Portanto, `go test ./...` requer Docker disponível.
 
 
 ## API Endpoints
@@ -117,6 +161,31 @@ db-test:
 | <kbd>GET /todo</kbd>      | Listar todas as tarefas                  |
 | <kbd>PATCH /todo/:id</kbd>| Editar uma tarefa existente por ID   |
 | <kbd>DELETE /todo/:id</kbd>| Remover uma tarefa existente por ID     |
+
+## Formato das respostas
+
+Toda resposta da API usa um envelope com o status HTTP, timestamp e dados ou erro.
+
+```json
+{
+  "success": true,
+  "status": 200,
+  "data": {},
+  "timestamp": "2026-10-24T12:00:00Z"
+}
+```
+
+```json
+{
+  "success": false,
+  "status": 400,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "título é obrigatório"
+  },
+  "timestamp": "2026-10-24T12:00:00Z"
+}
+```
 
 > [Link publico do Postman](https://www.postman.com/dan-3200/workspace/publico/collection/43029232-dfa83f1a-5ff2-47f7-a0ab-7cf1d0adb96c?action=share&creator=43029232)
 

@@ -1,0 +1,35 @@
+services:
+  api:
+    image: todo_api_img
+    container_name: todo_api
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    restart: always
+    env_file:
+      - ../.env
+    networks:
+      - todo_net
+    depends_on:
+      - database
+    ports:
+      - "8200:8200"
+
+  database:
+    image: postgres:latest
+    container_name: todo_db
+    env_file:
+      - ../.env
+    ports:
+      - 5810:5432
+    volumes:
+      - todo_data:/var/lib/postgress/data
+    networks:
+      - todo_net
+
+volumes:
+  todo_data:
+
+networks:
+  todo_net:
+    driver: bridge
