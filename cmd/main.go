@@ -2,7 +2,15 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"github.com/gin-gonic/gin"
 
 	"app/internal/application/usecase"
 	"app/internal/infrastructure/config"
@@ -12,13 +20,18 @@ import (
 )
 
 func main() {
+	gin.SetMode(gin.ReleaseMode)
+
+	appCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	settings, err := config.Load()
 	if err != nil {
 		log.Println("[.env error]: ", err)
 	}
 
 	if settings.Telemetry.Enabled {
-		cleanup, err := telemetry.SetupTelemetry(context.Background(), settings.Telemetry)
+		cleanup, err := telemetry.SetupTelemetry(appCtx, settings.Telemetry)
 		if err != nil {
 			log.Println("[error ao inicializar telemetria]:", err)
 		} else {
@@ -45,9 +58,31 @@ func main() {
 
 	service := usecase.NewTodoService(repository)
 	handler := httpadapter.NewTodoHandler(service)
-	server := httpadapter.NewServer(handler, connection)
+	router := httpadapter.NewServer(handler, connection)
+	server := &http.Server{
+		Addr:              ":" + settings.Server.Port,
+		Handler:           router,
+		ReadHeaderTimeout: 5 * time.Second,
+	}
 
-	if err := server.Run(":" + settings.Server.Port); err != nil {
-		log.Println("[error ao iniciar servidor]:", err)
+	serverErrors := make(chan error, 1)
+	go func() {
+		serverErrors <- server.ListenAndServe()
+	}()
+
+	select {
+	case err := <-serverErrors:
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Println("[error ao iniciar servidor]:", err)
+		}
+	case <-appCtx.Done():
+		log.Println("[desligando servidor HTTP]")
+
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		if err := server.Shutdown(shutdownCtx); err != nil {
+			log.Println("[erro ao desligar servidor HTTP]:", err)
+		}
 	}
 }
