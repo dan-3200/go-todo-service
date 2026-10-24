@@ -16,32 +16,26 @@ O projeto foi criado com foco em aprendizado, aplicando princípios de design co
 - `PostgreSQL`
 - `Docker`
 
-## Estrutura do projeto (Inspirada em Clean Architecture)
+## Estrutura do projeto (Clean Architecture)
 ```
 ├── internal
-│   ├── inner                    # Núcleo da aplicação (core)
-│   │   ├── entity               # Entidades / Domínio
-│   │   ├── usecase              # Casos de uso (Application Layer)
-│   │   ├── ports                # Interfaces (contratos)
-│   │   └── dto            		 # Modelos de input e output entre camadas
-│   │
-│   └── outer                    # Infraestrutura / Adapters
-│       ├── http                 # Camada de entrega (REST)
-│       │   ├── controller       # Controllers / Handlers
-│       │   └── server           # Setup do servidor e rotas
-│       │
-│       └── persistence          # Camada de dados
-│           ├── db               # Conexão com banco
-│           └── repository       # Implementação dos repositórios
+│   ├── domain                   # Regras de negócio
+│   │   ├── entity               # Entidades
+│   │   └── vo                   # Value objects
+│   ├── application              # Orquestração da aplicação
+│   │   ├── dto                  # Modelos de entrada e saída
+│   │   ├── ports                # Contratos dos adapters
+│   │   └── usecase              # Casos de uso
+│   └── infrastructure           # Adapters externos
+│       ├── http                 # Handlers, DTOs, rotas e servidor Gin
+│       └── postgres             # Conexão, schema e repositório PostgreSQL
 │
-├── pkg                          # Pacotes reutilizáveis
-│   └── utils
+├── tests                         # Testes centralizados por camada
+│   ├── application
+│   ├── domain
+│   └── infrastructure
 │
-├── tests                        # Testes automatizados
-│   ├── unit                     # Testes unitários
-│   └── integration              # Testes de integração
-│
-├── main.go                      # Ponto de entrada
+├── main.go                      # Ponto de entrada e composition root
 ├── go.mod                       # Dependências
 ├── go.sum                       # Hash das dependências
 ├── .env.example                 # Variáveis de ambiente
@@ -51,21 +45,21 @@ O projeto foi criado com foco em aprendizado, aplicando princípios de design co
 ```
 ---
 
-Separei o ``internal`` em ``inner`` e ``outer`` para isolar as regras de negócio da infraestrutura.
+O diretório ``domain`` concentra entidades e value objects sem depender de banco, HTTP ou frameworks.
+``application`` separa DTOs, portas e casos de uso, enquanto
+``infrastructure`` implementa os adaptadores Gin e PostgreSQL.
 
-O ``inner`` concentra o núcleo da aplicação (entidades, casos de uso e contratos), sem depender de banco, HTTP ou frameworks.
-O ``outer`` contém apenas os adaptadores (API, banco, servidor), que podem mudar sem afetar o core.
+As dependências apontam para dentro: infraestrutura depende da aplicação e do domínio,
+e a aplicação depende apenas do domínio.
 
-Assim, reduzo acoplamento, facilito testes e mantenho o sistema independente de tecnologia.
-
-### Entity ToDo
+### Entity Todo
 ```golang
-type ToDo struct {
-	ID        int64     `json:"id"`
-	Title     string    `json:"title"`
-	Content   string    `json:"content"`
-	Status    bool      `json:"status"`
-	CreatedAt time.Time `json:"created_at"`
+type Todo struct {
+	ID        vo.TodoID
+	Title     string
+	Content   string
+	Status    bool
+	CreatedAt time.Time
 }
 ```
 

@@ -1,15 +1,14 @@
-package db
+package postgres
 
 import (
 	"database/sql"
 	"fmt"
 	"os"
 
-	// Importar drive
 	_ "github.com/lib/pq"
 )
 
-func ConnPostgreSQL() (*sql.DB, error) {
+func OpenFromEnvironment() (*sql.DB, error) {
 	uri := fmt.Sprintf(
 		"postgres://%s:%s@%s:%s/%s?sslmode=disable",
 		os.Getenv("POSTGRES_USER"),
@@ -19,14 +18,14 @@ func ConnPostgreSQL() (*sql.DB, error) {
 		os.Getenv("POSTGRES_DB"),
 	)
 
-	conn, err := sql.Open("postgres", uri)
+	connection, err := sql.Open("postgres", uri)
 	if err != nil {
 		return nil, fmt.Errorf("Erro ao conectar com o banco de dados: %v", err)
 	}
 
-	if err := conn.Ping(); err != nil {
+	if err := connection.Ping(); err != nil {
 		return nil, fmt.Errorf("Erro ao pingar o banco de dados: %v", err)
 	}
 
-	return conn, nil
+	return connection, nil
 }

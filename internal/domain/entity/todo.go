@@ -4,29 +4,30 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"app/internal/domain/vo"
 )
 
-type ToDo struct {
-	ID        int64     `json:"id"`
-	Title     string    `json:"title"`
-	Content   string    `json:"content"`
-	Status    bool      `json:"status"`
-	CreatedAt time.Time `json:"created_at"`
+type Todo struct {
+	ID        vo.TodoID
+	Title     string
+	Content   string
+	Status    bool
+	CreatedAt time.Time
 }
 
-func NewToDo(title string, content string) (*ToDo, error) {
-	obj := &ToDo{
-		ID:        0,
+func NewTodo(title, content string) (*Todo, error) {
+	todo := &Todo{
 		Title:     strings.ToLower(title),
 		Content:   strings.ToLower(content),
 		Status:    false,
 		CreatedAt: time.Now(),
 	}
 
-	return obj, obj.Validate()
+	return todo, todo.Validate()
 }
 
-func (t *ToDo) Validate() error {
+func (t *Todo) Validate() error {
 	if strings.TrimSpace(t.Title) == "" {
 		return fmt.Errorf("título é obrigatório")
 	}
