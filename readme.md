@@ -11,7 +11,7 @@ API RESTful para gerenciamento de tarefas (ToDos), desenvolvida em Golang com o 
 O projeto foi criado com foco em aprendizado, aplicando princípios de design como SOLID e o padrão Singleton.
 
 ## Tecnologias
-- `Golang 1.24.1`
+- `Golang 1.27`
 - `Gin (framework http)`
 - `PostgreSQL`
 - `Docker`
