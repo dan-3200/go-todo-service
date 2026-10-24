@@ -60,6 +60,11 @@ O diretório ``domain`` concentra entidades e value objects sem depender de banc
 ``infrastructure`` implementa os adaptadores Gin e PostgreSQL. O adapter PostgreSQL
 usa código tipado gerado pelo SQLc a partir dos arquivos em ``database``.
 
+O pool PostgreSQL é configurado por `POSTGRES_MAX_OPEN_CONNS`,
+`POSTGRES_MAX_IDLE_CONNS`, `POSTGRES_CONN_MAX_LIFETIME` e
+`POSTGRES_CONN_MAX_IDLE_TIME`. Os valores padrão são 10, 2, 30 minutos e
+5 minutos, respectivamente.
+
 Quando `OTEL_ENABLED=true`, a aplicação exporta traces, métricas de runtime e logs para o
 collector OTLP/gRPC configurado em `OTEL_EXPORTER_OTLP_ENDPOINT`. A conexão, o tempo de
 desligamento e a taxa de amostragem podem ser configurados por `OTEL_COLLECTOR_INSECURE`,

@@ -21,11 +21,17 @@ func Open(settings config.PostgresConfig) (*sql.DB, error) {
 
 	connection, err := sql.Open("pgx", uri)
 	if err != nil {
-		return nil, fmt.Errorf("Erro ao conectar com o banco de dados: %v", err)
+		return nil, fmt.Errorf("Erro ao conectar com o banco de dados: %w", err)
 	}
 
+	connection.SetMaxOpenConns(settings.MaxOpenConns)
+	connection.SetMaxIdleConns(settings.MaxIdleConns)
+	connection.SetConnMaxLifetime(settings.ConnMaxLifetime)
+	connection.SetConnMaxIdleTime(settings.ConnMaxIdleTime)
+
 	if err := connection.Ping(); err != nil {
-		return nil, fmt.Errorf("Erro ao pingar o banco de dados: %v", err)
+		_ = connection.Close()
+		return nil, fmt.Errorf("Erro ao pingar o banco de dados: %w", err)
 	}
 
 	return connection, nil

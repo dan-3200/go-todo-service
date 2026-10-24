@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"net"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -15,6 +17,7 @@ import (
 
 	"app/internal/domain/entity"
 	"app/internal/domain/vo"
+	"app/internal/infrastructure/config"
 	infrastructurepostgres "app/internal/infrastructure/postgres"
 )
 
@@ -143,6 +146,32 @@ func TestTodoRepositoryIntegrationCreate(t *testing.T) {
 	require.Equal(t, "content", todo.Content)
 	require.False(t, todo.Status)
 	require.False(t, todo.CreatedAt.IsZero())
+}
+
+func TestOpenConfiguresConnectionPool(t *testing.T) {
+	connectionString, err := integrationContainer.ConnectionString(t.Context(), "sslmode=disable")
+	require.NoError(t, err)
+
+	connectionURL, err := url.Parse(connectionString)
+	require.NoError(t, err)
+	host, port, err := net.SplitHostPort(connectionURL.Host)
+	require.NoError(t, err)
+
+	connection, err := infrastructurepostgres.Open(config.PostgresConfig{
+		User:            "todo",
+		Password:        "todo",
+		Host:            host,
+		Port:            port,
+		Database:        "todo_test",
+		MaxOpenConns:    3,
+		MaxIdleConns:    1,
+		ConnMaxLifetime: time.Minute,
+		ConnMaxIdleTime: 30 * time.Second,
+	})
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = connection.Close() })
+
+	require.Equal(t, 3, connection.Stats().MaxOpenConnections)
 }
 
 func TestTodoRepositoryIntegrationFindByIDNotFound(t *testing.T) {
