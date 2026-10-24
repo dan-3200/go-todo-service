@@ -41,11 +41,14 @@ O projeto foi criado com foco em aprendizado, aplicando princípios de design co
 │   ├── domain
 │   └── infrastructure
 │
+├── docker                        # Configuração de containers
+│   ├── Dockerfile
+│   └── docker-compose.yml
+│
 ├── main.go                      # Ponto de entrada e composition root
 ├── go.mod                       # Dependências
 ├── go.sum                       # Hash das dependências
 ├── .env.example                 # Variáveis de ambiente
-├── docker-compose.yml           # Containers
 ├── Makefile                     # Automação
 └── README.md
 ```
@@ -114,15 +117,15 @@ sqlc-vet:
 
 # rodar banco principal no docker
 db-main:
-	docker compose -f 'docker-compose.yml' up -d --build 'database'
+	docker compose -f 'docker/docker-compose.yml' up -d --build 'database'
 
  # rodar banco para tests (integração) no docker
 db-test:
-	docker compose -f 'docker-compose.yml' up -d --build 'db-test'
+	docker compose -f 'docker/docker-compose.yml' up -d --build 'db-test'
 
 # aplicar schema no banco principal
 db-schema:
-	docker compose exec -T database sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"' < database/schema.sql
+	docker compose -f 'docker/docker-compose.yml' exec -T database sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"' < database/schema.sql
 ```
 > [!IMPORTANT]
 > Para execução do docker, certifique-se de configurar o arquivo `.env` com base no `.env.example`.

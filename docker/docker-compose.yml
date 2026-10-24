@@ -2,10 +2,12 @@ services:
   api:
     image: todo_api_img
     container_name: todo_api
-    build: .
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
     restart: always
     env_file:
-      - .env
+      - ../.env
     networks:
       - todo_net
     depends_on:
@@ -16,10 +18,8 @@ services:
   database:
     image: postgres:latest
     container_name: todo_db
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+    env_file:
+      - ../.env
     ports:
       - 5810:5432
     volumes:
