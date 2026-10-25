@@ -22,6 +22,27 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - name: Set up Atlas
+        uses: ariga/setup-atlas@v0
+        with:
+          version: v1.3.0
+
+      - name: Validate Atlas migrations
+        run: atlas migrate validate --env ci
+
+      - name: Verify migrations match desired schema
+        run: |
+          atlas migrate diff schema_check --env ci
+          test -z "$(git status --porcelain -- database/migrations)"
+
+      - name: Validate SQLc sources
+        run: go tool sqlc vet
+
+      - name: Verify generated SQLc code
+        run: |
+          go tool sqlc generate
+          test -z "$(git status --porcelain -- internal/infrastructure/postgres/sqlc)"
+
       - name: Verify dependencies
         run: go mod verify
 

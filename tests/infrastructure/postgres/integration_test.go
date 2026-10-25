@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"testing"
 	"time"
 
@@ -48,6 +49,10 @@ func TestMain(m *testing.M) {
 func startIntegrationDatabase() error {
 	ctx, cancel := context.WithTimeout(context.Background(), integrationTimeout)
 	defer cancel()
+	migrations, err := migrationPaths()
+	if err != nil {
+		return err
+	}
 
 	container, err := postgres.Run(ctx,
 		"postgres:16-alpine",
@@ -55,7 +60,7 @@ func startIntegrationDatabase() error {
 		postgres.WithUsername("todo"),
 		postgres.WithPassword("todo"),
 		postgres.WithSQLDriver("pgx"),
-		postgres.WithInitScripts(schemaPath()),
+		postgres.WithInitScripts(migrations...),
 		postgres.BasicWaitStrategies(),
 	)
 	integrationContainer = container
@@ -105,12 +110,23 @@ func stopIntegrationDatabase() error {
 	return result
 }
 
-func schemaPath() string {
+func migrationPaths() ([]string, error) {
 	_, currentFile, _, ok := runtime.Caller(0)
 	if !ok {
-		panic("unable to resolve integration test path")
+		return nil, fmt.Errorf("unable to resolve integration test path")
 	}
-	return filepath.Join(filepath.Dir(currentFile), "../../../database/schema.sql")
+
+	pattern := filepath.Join(filepath.Dir(currentFile), "../../../database/migrations/*.sql")
+	paths, err := filepath.Glob(pattern)
+	if err != nil {
+		return nil, fmt.Errorf("find database migrations: %w", err)
+	}
+	if len(paths) == 0 {
+		return nil, fmt.Errorf("no database migrations found")
+	}
+
+	sort.Strings(paths)
+	return paths, nil
 }
 
 func resetIntegrationDatabase(t *testing.T) {
