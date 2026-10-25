@@ -81,7 +81,10 @@ func main() {
 	server := &http.Server{
 		Addr:              ":" + settings.Server.Port,
 		Handler:           router,
-		ReadHeaderTimeout: 5 * time.Second,
+		ReadHeaderTimeout: settings.Server.ReadHeaderTimeout,
+		ReadTimeout:       settings.Server.ReadTimeout,
+		WriteTimeout:      settings.Server.WriteTimeout,
+		IdleTimeout:       settings.Server.IdleTimeout,
 	}
 
 	serverErrors := make(chan error, 1)

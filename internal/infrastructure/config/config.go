@@ -16,7 +16,11 @@ type Config struct {
 }
 
 type ServerConfig struct {
-	Port string
+	Port              string
+	ReadHeaderTimeout time.Duration
+	ReadTimeout       time.Duration
+	WriteTimeout      time.Duration
+	IdleTimeout       time.Duration
 }
 
 type AuthConfig struct {
@@ -59,7 +63,11 @@ func Load() (Config, error) {
 func FromEnvironment() Config {
 	return Config{
 		Server: ServerConfig{
-			Port: environmentOrDefault("API_PORT", "8200"),
+			Port:              environmentOrDefault("API_PORT", "8200"),
+			ReadHeaderTimeout: environmentDuration("API_READ_HEADER_TIMEOUT", 5*time.Second),
+			ReadTimeout:       environmentDuration("API_READ_TIMEOUT", 15*time.Second),
+			WriteTimeout:      environmentDuration("API_WRITE_TIMEOUT", 15*time.Second),
+			IdleTimeout:       environmentDuration("API_IDLE_TIMEOUT", 60*time.Second),
 		},
 		Auth: AuthConfig{
 			JWTSecret: os.Getenv("JWT_SECRET"),
