@@ -10,6 +10,7 @@ import (
 
 	"app/internal/application/dto"
 	"app/internal/application/usecase"
+	"app/internal/domain/apperror"
 	"app/internal/domain/entity"
 	"app/internal/domain/vo"
 )
@@ -73,7 +74,7 @@ func TestTodoServiceCreateValidatesInputBeforePersisting(t *testing.T) {
 
 	_, err := service.Create(context.Background(), dto.CreateTodoInput{Title: " ", Content: "content"})
 
-	require.EqualError(t, err, "título é obrigatório")
+	require.ErrorIs(t, err, apperror.ErrTitleRequired)
 	require.Equal(t, 0, repository.createCalls)
 }
 
@@ -97,9 +98,9 @@ func TestTodoServiceRejectsInvalidIDs(t *testing.T) {
 	status := true
 
 	_, err := service.Get(context.Background(), 0)
-	require.EqualError(t, err, "id inválido")
-	require.EqualError(t, service.Update(context.Background(), 0, dto.UpdateTodoInput{Status: &status}), "id inválido")
-	require.EqualError(t, service.Delete(context.Background(), 0), "id inválido")
+	require.ErrorIs(t, err, apperror.ErrInvalidID)
+	require.ErrorIs(t, service.Update(context.Background(), 0, dto.UpdateTodoInput{Status: &status}), apperror.ErrInvalidID)
+	require.ErrorIs(t, service.Delete(context.Background(), 0), apperror.ErrInvalidID)
 }
 
 func TestTodoServiceListReturnsEmptySlice(t *testing.T) {
@@ -145,7 +146,7 @@ func TestTodoServiceUpdateValidatesInputBeforeLookup(t *testing.T) {
 
 	err := service.Update(context.Background(), 1, dto.UpdateTodoInput{})
 
-	require.EqualError(t, err, "ao menos um campo deve ser informado")
+	require.ErrorIs(t, err, apperror.ErrNoFieldsProvided)
 	require.Equal(t, 0, repository.findCalls)
 }
 
@@ -156,17 +157,18 @@ func TestTodoServiceUpdateRejectsBlankFields(t *testing.T) {
 
 	err := service.Update(context.Background(), 1, dto.UpdateTodoInput{Content: &blank})
 
-	require.EqualError(t, err, "conteúdo é obrigatório")
+	require.ErrorIs(t, err, apperror.ErrContentRequired)
 	require.Equal(t, 0, repository.findCalls)
 }
 
-func TestTodoServiceUpdateHidesRepositoryLookupError(t *testing.T) {
-	service := usecase.NewTodoService(&fakeTodoRepository{findErr: errors.New("database error")})
+func TestTodoServiceUpdatePropagatesRepositoryLookupError(t *testing.T) {
+	repositoryError := errors.New("database error")
+	service := usecase.NewTodoService(&fakeTodoRepository{findErr: repositoryError})
 	status := true
 
 	err := service.Update(context.Background(), 1, dto.UpdateTodoInput{Status: &status})
 
-	require.EqualError(t, err, "não há elemento com tal id")
+	require.ErrorIs(t, err, repositoryError)
 }
 
 func TestTodoServiceDelete(t *testing.T) {

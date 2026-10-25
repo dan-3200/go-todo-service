@@ -1,12 +1,12 @@
 package vo
 
-import "fmt"
+import "app/internal/domain/apperror"
 
 type TodoID int64
 
 func NewTodoID(value int64) (TodoID, error) {
 	if value <= 0 {
-		return 0, fmt.Errorf("id inválido")
+		return 0, apperror.ErrInvalidID
 	}
 	return TodoID(value), nil
 }

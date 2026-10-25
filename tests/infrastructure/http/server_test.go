@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -15,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"app/internal/application/usecase"
+	"app/internal/domain/apperror"
 	"app/internal/domain/entity"
 	"app/internal/domain/vo"
 	httpadapter "app/internal/infrastructure/http"
@@ -29,6 +31,9 @@ type fakeRepository struct {
 	created   *entity.Todo
 	updated   *entity.Todo
 	deletedID vo.TodoID
+	findErr   error
+	updateErr error
+	deleteErr error
 }
 
 func (r *fakeRepository) Create(_ context.Context, todo *entity.Todo) (vo.TodoID, error) {
@@ -37,8 +42,11 @@ func (r *fakeRepository) Create(_ context.Context, todo *entity.Todo) (vo.TodoID
 }
 
 func (r *fakeRepository) FindByID(_ context.Context, _ vo.TodoID) (*entity.Todo, error) {
+	if r.findErr != nil {
+		return nil, r.findErr
+	}
 	if r.todo == nil {
-		return nil, errors.New("nenhum registro encontrado")
+		return nil, apperror.ErrTodoNotFound
 	}
 	return r.todo, nil
 }
@@ -49,12 +57,12 @@ func (r *fakeRepository) FindAll(context.Context) ([]entity.Todo, error) {
 
 func (r *fakeRepository) Update(_ context.Context, todo *entity.Todo) error {
 	r.updated = todo
-	return nil
+	return r.updateErr
 }
 
 func (r *fakeRepository) Delete(_ context.Context, id vo.TodoID) error {
 	r.deletedID = id
-	return nil
+	return r.deleteErr
 }
 
 type fakePinger struct{ err error }
@@ -180,6 +188,43 @@ func TestInvalidPathIDUsesErrorEnvelope(t *testing.T) {
 	requireError(t, payload, "INVALID_ID", "id inválido")
 }
 
+func TestSemanticValidationErrorsUseErrorEnvelope(t *testing.T) {
+	tests := []struct {
+		name    string
+		method  string
+		target  string
+		body    []byte
+		code    string
+		message string
+	}{
+		{
+			name: "invalid ID", method: http.MethodGet, target: "/todo/0",
+			code: "INVALID_ID", message: "id inválido",
+		},
+		{
+			name: "title required", method: http.MethodPost, target: "/todo",
+			body: []byte(`{"title":" ","content":"content"}`),
+			code: "VALIDATION_ERROR", message: "título é obrigatório",
+		},
+		{
+			name: "content required", method: http.MethodPost, target: "/todo",
+			body: []byte(`{"title":"title","content":" "}`),
+			code: "VALIDATION_ERROR", message: "conteúdo é obrigatório",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			server := newTestServer(&fakeRepository{}, fakePinger{})
+
+			response := performAuthenticatedRequest(t, server, test.method, test.target, test.body)
+
+			payload := requireEnvelope(t, response, http.StatusBadRequest, false)
+			requireError(t, payload, test.code, test.message)
+		})
+	}
+}
+
 func TestListTodoContractUsesEmptyArray(t *testing.T) {
 	server := newTestServer(&fakeRepository{}, fakePinger{})
 
@@ -215,6 +260,50 @@ func TestUpdateEmptyInputUsesValidationError(t *testing.T) {
 
 	payload := requireEnvelope(t, response, http.StatusBadRequest, false)
 	requireError(t, payload, "VALIDATION_ERROR", "ao menos um campo deve ser informado")
+}
+
+func TestWrappedTodoNotFoundUsesNotFoundEnvelope(t *testing.T) {
+	t.Run("get", func(t *testing.T) {
+		repository := &fakeRepository{findErr: fmt.Errorf("lookup failed: %w", apperror.ErrTodoNotFound)}
+		server := newTestServer(repository, fakePinger{})
+
+		response := performAuthenticatedRequest(t, server, http.MethodGet, "/todo/1", nil)
+
+		payload := requireEnvelope(t, response, http.StatusNotFound, false)
+		requireError(t, payload, "TODO_NOT_FOUND", "todo não encontrado")
+	})
+
+	t.Run("delete", func(t *testing.T) {
+		repository := &fakeRepository{deleteErr: fmt.Errorf("delete failed: %w", apperror.ErrTodoNotFound)}
+		server := newTestServer(repository, fakePinger{})
+
+		response := performAuthenticatedRequest(t, server, http.MethodDelete, "/todo/1", nil)
+
+		payload := requireEnvelope(t, response, http.StatusNotFound, false)
+		requireError(t, payload, "TODO_NOT_FOUND", "todo não encontrado")
+	})
+
+	t.Run("update", func(t *testing.T) {
+		repository := &fakeRepository{findErr: fmt.Errorf("lookup failed: %w", apperror.ErrTodoNotFound)}
+		server := newTestServer(repository, fakePinger{})
+
+		response := performAuthenticatedRequest(t, server, http.MethodPatch, "/todo/1", []byte(`{"status":true}`))
+
+		payload := requireEnvelope(t, response, http.StatusNotFound, false)
+		requireError(t, payload, "TODO_NOT_FOUND", "todo não encontrado")
+	})
+}
+
+func TestUpdateUnexpectedRepositoryErrorUsesInternalError(t *testing.T) {
+	repositoryError := errors.New("database unavailable")
+	repository := &fakeRepository{findErr: repositoryError}
+	server := newTestServer(repository, fakePinger{})
+
+	response := performAuthenticatedRequest(t, server, http.MethodPatch, "/todo/1", []byte(`{"status":true}`))
+
+	payload := requireEnvelope(t, response, http.StatusInternalServerError, false)
+	requireError(t, payload, "INTERNAL_ERROR", "erro interno do servidor")
+	require.NotContains(t, payload["error"].(map[string]any), "details")
 }
 
 func TestDeleteTodoContract(t *testing.T) {

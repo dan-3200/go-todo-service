@@ -1,10 +1,10 @@
 package entity
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
+	"app/internal/domain/apperror"
 	"app/internal/domain/vo"
 )
 
@@ -29,10 +29,10 @@ func NewTodo(title, content string) (*Todo, error) {
 
 func (t *Todo) Validate() error {
 	if strings.TrimSpace(t.Title) == "" {
-		return fmt.Errorf("título é obrigatório")
+		return apperror.ErrTitleRequired
 	}
 	if strings.TrimSpace(t.Content) == "" {
-		return fmt.Errorf("conteúdo é obrigatório")
+		return apperror.ErrContentRequired
 	}
 	return nil
 }

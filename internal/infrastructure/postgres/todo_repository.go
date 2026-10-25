@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"app/internal/application/ports"
+	"app/internal/domain/apperror"
 	"app/internal/domain/entity"
 	"app/internal/domain/vo"
 	postgresql "app/internal/infrastructure/postgres/sqlc"
@@ -42,7 +43,7 @@ func (r *TodoRepository) Create(ctx context.Context, todo *entity.Todo) (vo.Todo
 func (r *TodoRepository) FindByID(ctx context.Context, id vo.TodoID) (*entity.Todo, error) {
 	todo, err := r.queries.GetTodo(ctx, id.Int64())
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, errors.New("nenhum registro encontrado")
+		return nil, apperror.ErrTodoNotFound
 	}
 	if err != nil {
 		return nil, err
@@ -88,7 +89,7 @@ func (r *TodoRepository) Delete(ctx context.Context, id vo.TodoID) error {
 		return err
 	}
 	if rowsAffected == 0 {
-		return errors.New("nenhum registro afetado")
+		return apperror.ErrTodoNotFound
 	}
 
 	return nil

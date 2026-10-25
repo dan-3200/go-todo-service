@@ -2,11 +2,11 @@ package usecase
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"app/internal/application/dto"
 	"app/internal/application/ports"
+	"app/internal/domain/apperror"
 	"app/internal/domain/entity"
 	"app/internal/domain/vo"
 )
@@ -77,7 +77,7 @@ func (s *TodoService) Update(ctx context.Context, rawID int64, input dto.UpdateT
 
 	todo, err := s.repository.FindByID(ctx, id)
 	if err != nil {
-		return fmt.Errorf("não há elemento com tal id")
+		return err
 	}
 
 	if input.Title != nil {
@@ -114,23 +114,23 @@ func toOutput(todo entity.Todo) dto.TodoOutput {
 
 func validateCreateInput(input dto.CreateTodoInput) error {
 	if strings.TrimSpace(input.Title) == "" {
-		return fmt.Errorf("título é obrigatório")
+		return apperror.ErrTitleRequired
 	}
 	if strings.TrimSpace(input.Content) == "" {
-		return fmt.Errorf("conteúdo é obrigatório")
+		return apperror.ErrContentRequired
 	}
 	return nil
 }
 
 func validateUpdateInput(input dto.UpdateTodoInput) error {
 	if input.Title == nil && input.Content == nil && input.Status == nil {
-		return fmt.Errorf("ao menos um campo deve ser informado")
+		return apperror.ErrNoFieldsProvided
 	}
 	if input.Title != nil && strings.TrimSpace(*input.Title) == "" {
-		return fmt.Errorf("título é obrigatório")
+		return apperror.ErrTitleRequired
 	}
 	if input.Content != nil && strings.TrimSpace(*input.Content) == "" {
-		return fmt.Errorf("conteúdo é obrigatório")
+		return apperror.ErrContentRequired
 	}
 	return nil
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 
+	"app/internal/domain/apperror"
 	"app/internal/domain/entity"
 	"app/internal/domain/vo"
 	"app/internal/infrastructure/config"
@@ -179,7 +180,7 @@ func TestTodoRepositoryIntegrationFindByIDNotFound(t *testing.T) {
 
 	_, err := integrationRepository.FindByID(t.Context(), vo.TodoID(99))
 
-	require.EqualError(t, err, "nenhum registro encontrado")
+	require.ErrorIs(t, err, apperror.ErrTodoNotFound)
 }
 
 func TestTodoRepositoryIntegrationFindAllReturnsEmptySlice(t *testing.T) {
@@ -217,7 +218,7 @@ func TestTodoRepositoryIntegrationDelete(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = integrationRepository.FindByID(t.Context(), todo.ID)
-	require.EqualError(t, err, "nenhum registro encontrado")
+	require.ErrorIs(t, err, apperror.ErrTodoNotFound)
 }
 
 func TestTodoRepositoryIntegrationDeleteNoRowsAffected(t *testing.T) {
@@ -225,7 +226,7 @@ func TestTodoRepositoryIntegrationDeleteNoRowsAffected(t *testing.T) {
 
 	err := integrationRepository.Delete(t.Context(), vo.TodoID(20))
 
-	require.EqualError(t, err, "nenhum registro afetado")
+	require.ErrorIs(t, err, apperror.ErrTodoNotFound)
 }
 
 func TestTodoRepositoryIntegrationRejectsNullableColumns(t *testing.T) {

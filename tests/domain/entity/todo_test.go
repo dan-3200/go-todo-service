@@ -5,6 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"app/internal/domain/apperror"
 	"app/internal/domain/entity"
 )
 
@@ -20,19 +21,19 @@ func TestNewTodo(t *testing.T) {
 
 func TestNewTodoValidatesRequiredFields(t *testing.T) {
 	tests := []struct {
-		name    string
-		title   string
-		content string
-		message string
+		name          string
+		title         string
+		content       string
+		expectedError error
 	}{
-		{name: "title", title: "  ", content: "content", message: "título é obrigatório"},
-		{name: "content", title: "title", content: "  ", message: "conteúdo é obrigatório"},
+		{name: "title", title: "  ", content: "content", expectedError: apperror.ErrTitleRequired},
+		{name: "content", title: "title", content: "  ", expectedError: apperror.ErrContentRequired},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			_, err := entity.NewTodo(test.title, test.content)
-			require.EqualError(t, err, test.message)
+			require.ErrorIs(t, err, test.expectedError)
 		})
 	}
 }
