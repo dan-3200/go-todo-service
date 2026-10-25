@@ -10,12 +10,17 @@ import (
 
 type Config struct {
 	Server    ServerConfig
+	Auth      AuthConfig
 	Postgres  PostgresConfig
 	Telemetry TelemetryConfig
 }
 
 type ServerConfig struct {
 	Port string
+}
+
+type AuthConfig struct {
+	JWTSecret string
 }
 
 type PostgresConfig struct {
@@ -55,6 +60,9 @@ func FromEnvironment() Config {
 	return Config{
 		Server: ServerConfig{
 			Port: environmentOrDefault("API_PORT", "8200"),
+		},
+		Auth: AuthConfig{
+			JWTSecret: os.Getenv("JWT_SECRET"),
 		},
 		Postgres: PostgresConfig{
 			User:            os.Getenv("POSTGRES_USER"),

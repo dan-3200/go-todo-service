@@ -15,6 +15,7 @@ import (
 	"app/internal/application/usecase"
 	"app/internal/infrastructure/config"
 	httpadapter "app/internal/infrastructure/http"
+	"app/internal/infrastructure/http/middleware"
 	"app/internal/infrastructure/logging"
 	"app/internal/infrastructure/postgres"
 	"app/internal/infrastructure/telemetry"
@@ -51,6 +52,12 @@ func main() {
 		}
 	}
 
+	authMiddleware, err := middleware.NewJWT(settings.Auth.JWTSecret)
+	if err != nil {
+		logger.ErrorContext(appCtx, "falha ao inicializar autenticação", slog.Any("error", err))
+		return
+	}
+
 	connection, err := postgres.Open(settings.Postgres)
 	if err != nil {
 		logger.ErrorContext(appCtx, "falha ao conectar com o banco de dados", slog.Any("error", err))
@@ -66,7 +73,7 @@ func main() {
 
 	service := usecase.NewTodoService(repository)
 	handler := httpadapter.NewTodoHandler(service)
-	router := httpadapter.NewServer(handler, connection)
+	router := httpadapter.NewServer(handler, connection, authMiddleware)
 	server := &http.Server{
 		Addr:              ":" + settings.Server.Port,
 		Handler:           router,
