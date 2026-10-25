@@ -21,7 +21,7 @@ func Open(settings config.PostgresConfig) (*sql.DB, error) {
 
 	connection, err := sql.Open("pgx", uri)
 	if err != nil {
-		return nil, fmt.Errorf("Erro ao conectar com o banco de dados: %w", err)
+		return nil, fmt.Errorf("erro ao conectar com o banco de dados: %w", err)
 	}
 
 	connection.SetMaxOpenConns(settings.MaxOpenConns)
@@ -31,7 +31,7 @@ func Open(settings config.PostgresConfig) (*sql.DB, error) {
 
 	if err := connection.Ping(); err != nil {
 		_ = connection.Close()
-		return nil, fmt.Errorf("Erro ao pingar o banco de dados: %w", err)
+		return nil, fmt.Errorf("erro ao pingar o banco de dados: %w", err)
 	}
 
 	return connection, nil

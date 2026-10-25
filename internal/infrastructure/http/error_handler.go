@@ -16,7 +16,7 @@ func handleServiceError(ctx *gin.Context, err error) {
 		response.Error(ctx, http.StatusBadRequest, "INVALID_ID", message, nil)
 	case "título é obrigatório", "conteúdo é obrigatório", "ao menos um campo deve ser informado":
 		response.Error(ctx, http.StatusBadRequest, "VALIDATION_ERROR", message, nil)
-	case "Nenhum registro encontro.", "não há elemento com tal id", "Nenhum registro afetado":
+	case "nenhum registro encontrado", "não há elemento com tal id", "nenhum registro afetado":
 		response.Error(ctx, http.StatusNotFound, "TODO_NOT_FOUND", "todo não encontrado", nil)
 	default:
 		response.InternalServerError(ctx)

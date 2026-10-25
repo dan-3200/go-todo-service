@@ -42,7 +42,7 @@ func (r *TodoRepository) Create(ctx context.Context, todo *entity.Todo) (vo.Todo
 func (r *TodoRepository) FindByID(ctx context.Context, id vo.TodoID) (*entity.Todo, error) {
 	todo, err := r.queries.GetTodo(ctx, id.Int64())
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, errors.New("Nenhum registro encontro.")
+		return nil, errors.New("nenhum registro encontrado")
 	}
 	if err != nil {
 		return nil, err
@@ -88,7 +88,7 @@ func (r *TodoRepository) Delete(ctx context.Context, id vo.TodoID) error {
 		return err
 	}
 	if rowsAffected == 0 {
-		return errors.New("Nenhum registro afetado")
+		return errors.New("nenhum registro afetado")
 	}
 
 	return nil

@@ -38,7 +38,7 @@ func (r *fakeRepository) Create(_ context.Context, todo *entity.Todo) (vo.TodoID
 
 func (r *fakeRepository) FindByID(_ context.Context, _ vo.TodoID) (*entity.Todo, error) {
 	if r.todo == nil {
-		return nil, errors.New("Nenhum registro encontro.")
+		return nil, errors.New("nenhum registro encontrado")
 	}
 	return r.todo, nil
 }

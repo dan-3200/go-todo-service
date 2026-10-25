@@ -63,7 +63,11 @@ func main() {
 		logger.ErrorContext(appCtx, "falha ao conectar com o banco de dados", slog.Any("error", err))
 		return
 	}
-	defer connection.Close()
+	defer func() {
+		if err := connection.Close(); err != nil {
+			logger.Error("falha ao fechar conexão com o banco de dados", slog.Any("error", err))
+		}
+	}()
 
 	repository, err := postgres.NewTodoRepository(connection)
 	if err != nil {

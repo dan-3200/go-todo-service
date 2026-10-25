@@ -71,7 +71,7 @@ func TestTodoRepositoryFindByIDNotFound(t *testing.T) {
 
 	_, err := repository.FindByID(context.Background(), vo.TodoID(99))
 
-	require.EqualError(t, err, "Nenhum registro encontro.")
+	require.EqualError(t, err, "nenhum registro encontrado")
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -111,7 +111,7 @@ func TestTodoRepositoryDeleteNoRowsAffected(t *testing.T) {
 
 	err := repository.Delete(context.Background(), vo.TodoID(20))
 
-	require.EqualError(t, err, "Nenhum registro afetado")
+	require.EqualError(t, err, "nenhum registro afetado")
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 

@@ -179,7 +179,7 @@ func TestTodoRepositoryIntegrationFindByIDNotFound(t *testing.T) {
 
 	_, err := integrationRepository.FindByID(t.Context(), vo.TodoID(99))
 
-	require.EqualError(t, err, "Nenhum registro encontro.")
+	require.EqualError(t, err, "nenhum registro encontrado")
 }
 
 func TestTodoRepositoryIntegrationFindAllReturnsEmptySlice(t *testing.T) {
@@ -217,7 +217,7 @@ func TestTodoRepositoryIntegrationDelete(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = integrationRepository.FindByID(t.Context(), todo.ID)
-	require.EqualError(t, err, "Nenhum registro encontro.")
+	require.EqualError(t, err, "nenhum registro encontrado")
 }
 
 func TestTodoRepositoryIntegrationDeleteNoRowsAffected(t *testing.T) {
@@ -225,7 +225,7 @@ func TestTodoRepositoryIntegrationDeleteNoRowsAffected(t *testing.T) {
 
 	err := integrationRepository.Delete(t.Context(), vo.TodoID(20))
 
-	require.EqualError(t, err, "Nenhum registro afetado")
+	require.EqualError(t, err, "nenhum registro afetado")
 }
 
 func TestTodoRepositoryIntegrationRejectsNullableColumns(t *testing.T) {
