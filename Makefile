@@ -1,7 +1,7 @@
 # !windows powershell: 'choco install make' 
 
 # Evitar conflito com nome de arquivos
-.PHONY: dev test db-main db-test db-schema run generate sqlc-vet
+.PHONY: dev test lint lint-fix db-main db-test db-schema run generate sqlc-vet
 
 # executar código
 run: 
@@ -14,6 +14,14 @@ dev:
 # rodar todos os testes (unitários e integração)
 test: 
 	go test ./...
+
+# verificar qualidade, formatacao e problemas de seguranca
+lint:
+	go tool -modfile=golangci-lint.mod golangci-lint run
+
+# aplicar correcoes automaticas disponibilizadas pelos linters
+lint-fix:
+	go tool -modfile=golangci-lint.mod golangci-lint run --fix
 
 # gerar código de acesso ao banco a partir dos arquivos SQL
 generate:
