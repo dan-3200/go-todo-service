@@ -7,7 +7,16 @@ run:
 linters:
   default: standard
   enable:
+    - bodyclose
+    - errorlint
     - gosec
+    - noctx
+    - nolintlint
+    - rowserrcheck
+    - sloglint
+    - spancheck
+    - sqlclosecheck
+    - testifylint
 
 formatters:
   enable:
