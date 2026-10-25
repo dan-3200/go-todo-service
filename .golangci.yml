@@ -10,6 +10,7 @@ linters:
     - bodyclose
     - errorlint
     - gosec
+    - loggercheck
     - noctx
     - nolintlint
     - rowserrcheck
