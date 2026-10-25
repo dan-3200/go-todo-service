@@ -15,7 +15,6 @@ import (
 	"app/internal/application/usecase"
 	"app/internal/infrastructure/config"
 	httpadapter "app/internal/infrastructure/http"
-	"app/internal/infrastructure/http/middleware"
 	"app/internal/infrastructure/logging"
 	"app/internal/infrastructure/postgres"
 	"app/internal/infrastructure/telemetry"
@@ -52,24 +51,14 @@ func main() {
 		}
 	}
 
-	authMiddleware, err := middleware.NewJWT(settings.Auth.JWTSecret)
-	if err != nil {
-		logger.ErrorContext(appCtx, "falha ao inicializar autenticação", slog.Any("error", err))
-		return
-	}
-
-	connection, err := postgres.Open(appCtx, settings.Postgres)
+	connection, err := postgres.Open(settings.Postgres)
 	if err != nil {
 		logger.ErrorContext(appCtx, "falha ao conectar com o banco de dados", slog.Any("error", err))
 		return
 	}
-	defer func() {
-		if err := connection.Close(); err != nil {
-			logger.Error("falha ao fechar conexão com o banco de dados", slog.Any("error", err))
-		}
-	}()
+	defer connection.Close()
 
-	repository, err := postgres.NewTodoRepository(appCtx, connection)
+	repository, err := postgres.NewTodoRepository(connection)
 	if err != nil {
 		logger.ErrorContext(appCtx, "falha ao inicializar repositório", slog.Any("error", err))
 		return
@@ -77,14 +66,11 @@ func main() {
 
 	service := usecase.NewTodoService(repository)
 	handler := httpadapter.NewTodoHandler(service)
-	router := httpadapter.NewServer(handler, connection, authMiddleware)
+	router := httpadapter.NewServer(handler, connection)
 	server := &http.Server{
 		Addr:              ":" + settings.Server.Port,
 		Handler:           router,
-		ReadHeaderTimeout: settings.Server.ReadHeaderTimeout,
-		ReadTimeout:       settings.Server.ReadTimeout,
-		WriteTimeout:      settings.Server.WriteTimeout,
-		IdleTimeout:       settings.Server.IdleTimeout,
+		ReadHeaderTimeout: 5 * time.Second,
 	}
 
 	serverErrors := make(chan error, 1)

@@ -5,7 +5,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"app/internal/domain/apperror"
 	"app/internal/domain/vo"
 )
 
@@ -19,6 +18,6 @@ func TestNewTodoID(t *testing.T) {
 func TestNewTodoIDRejectsNonPositiveValues(t *testing.T) {
 	for _, value := range []int64{0, -1} {
 		_, err := vo.NewTodoID(value)
-		require.ErrorIs(t, err, apperror.ErrInvalidID)
+		require.EqualError(t, err, "id inválido")
 	}
 }

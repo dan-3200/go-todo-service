@@ -10,21 +10,12 @@ import (
 
 type Config struct {
 	Server    ServerConfig
-	Auth      AuthConfig
 	Postgres  PostgresConfig
 	Telemetry TelemetryConfig
 }
 
 type ServerConfig struct {
-	Port              string
-	ReadHeaderTimeout time.Duration
-	ReadTimeout       time.Duration
-	WriteTimeout      time.Duration
-	IdleTimeout       time.Duration
-}
-
-type AuthConfig struct {
-	JWTSecret string
+	Port string
 }
 
 type PostgresConfig struct {
@@ -63,14 +54,7 @@ func Load() (Config, error) {
 func FromEnvironment() Config {
 	return Config{
 		Server: ServerConfig{
-			Port:              environmentOrDefault("API_PORT", "8200"),
-			ReadHeaderTimeout: environmentDuration("API_READ_HEADER_TIMEOUT", 5*time.Second),
-			ReadTimeout:       environmentDuration("API_READ_TIMEOUT", 15*time.Second),
-			WriteTimeout:      environmentDuration("API_WRITE_TIMEOUT", 15*time.Second),
-			IdleTimeout:       environmentDuration("API_IDLE_TIMEOUT", 60*time.Second),
-		},
-		Auth: AuthConfig{
-			JWTSecret: os.Getenv("JWT_SECRET"),
+			Port: environmentOrDefault("API_PORT", "8200"),
 		},
 		Postgres: PostgresConfig{
 			User:            os.Getenv("POSTGRES_USER"),

@@ -10,7 +10,6 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
 
-	"app/internal/domain/apperror"
 	"app/internal/domain/entity"
 	"app/internal/domain/vo"
 	"app/internal/infrastructure/postgres"
@@ -24,7 +23,7 @@ func newMockRepository(t *testing.T) (*postgres.TodoRepository, sqlmock.Sqlmock)
 	t.Cleanup(func() { _ = database.Close() })
 
 	mock.ExpectPing()
-	repository, err := postgres.NewTodoRepository(t.Context(), database)
+	repository, err := postgres.NewTodoRepository(database)
 	require.NoError(t, err)
 
 	return repository, mock
@@ -72,7 +71,7 @@ func TestTodoRepositoryFindByIDNotFound(t *testing.T) {
 
 	_, err := repository.FindByID(context.Background(), vo.TodoID(99))
 
-	require.ErrorIs(t, err, apperror.ErrTodoNotFound)
+	require.EqualError(t, err, "Nenhum registro encontro.")
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -112,7 +111,7 @@ func TestTodoRepositoryDeleteNoRowsAffected(t *testing.T) {
 
 	err := repository.Delete(context.Background(), vo.TodoID(20))
 
-	require.ErrorIs(t, err, apperror.ErrTodoNotFound)
+	require.EqualError(t, err, "Nenhum registro afetado")
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 

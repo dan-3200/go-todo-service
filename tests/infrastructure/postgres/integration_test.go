@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 
-	"app/internal/domain/apperror"
 	"app/internal/domain/entity"
 	"app/internal/domain/vo"
 	"app/internal/infrastructure/config"
@@ -81,7 +80,7 @@ func startIntegrationDatabase() error {
 		return err
 	}
 
-	integrationRepository, err = infrastructurepostgres.NewTodoRepository(ctx, integrationDatabase)
+	integrationRepository, err = infrastructurepostgres.NewTodoRepository(integrationDatabase)
 	if err != nil {
 		_ = stopIntegrationDatabase()
 		return err
@@ -158,7 +157,7 @@ func TestOpenConfiguresConnectionPool(t *testing.T) {
 	host, port, err := net.SplitHostPort(connectionURL.Host)
 	require.NoError(t, err)
 
-	connection, err := infrastructurepostgres.Open(t.Context(), config.PostgresConfig{
+	connection, err := infrastructurepostgres.Open(config.PostgresConfig{
 		User:            "todo",
 		Password:        "todo",
 		Host:            host,
@@ -180,7 +179,7 @@ func TestTodoRepositoryIntegrationFindByIDNotFound(t *testing.T) {
 
 	_, err := integrationRepository.FindByID(t.Context(), vo.TodoID(99))
 
-	require.ErrorIs(t, err, apperror.ErrTodoNotFound)
+	require.EqualError(t, err, "Nenhum registro encontro.")
 }
 
 func TestTodoRepositoryIntegrationFindAllReturnsEmptySlice(t *testing.T) {
@@ -218,7 +217,7 @@ func TestTodoRepositoryIntegrationDelete(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = integrationRepository.FindByID(t.Context(), todo.ID)
-	require.ErrorIs(t, err, apperror.ErrTodoNotFound)
+	require.EqualError(t, err, "Nenhum registro encontro.")
 }
 
 func TestTodoRepositoryIntegrationDeleteNoRowsAffected(t *testing.T) {
@@ -226,7 +225,7 @@ func TestTodoRepositoryIntegrationDeleteNoRowsAffected(t *testing.T) {
 
 	err := integrationRepository.Delete(t.Context(), vo.TodoID(20))
 
-	require.ErrorIs(t, err, apperror.ErrTodoNotFound)
+	require.EqualError(t, err, "Nenhum registro afetado")
 }
 
 func TestTodoRepositoryIntegrationRejectsNullableColumns(t *testing.T) {

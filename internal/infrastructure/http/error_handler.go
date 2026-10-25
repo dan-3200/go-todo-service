@@ -1,26 +1,22 @@
 package http
 
 import (
-	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 
-	"app/internal/domain/apperror"
 	"app/internal/infrastructure/http/response"
 )
 
 func handleServiceError(ctx *gin.Context, err error) {
-	switch {
-	case errors.Is(err, apperror.ErrInvalidID):
-		response.Error(ctx, http.StatusBadRequest, "INVALID_ID", apperror.ErrInvalidID.Error(), nil)
-	case errors.Is(err, apperror.ErrTitleRequired):
-		response.Error(ctx, http.StatusBadRequest, "VALIDATION_ERROR", apperror.ErrTitleRequired.Error(), nil)
-	case errors.Is(err, apperror.ErrContentRequired):
-		response.Error(ctx, http.StatusBadRequest, "VALIDATION_ERROR", apperror.ErrContentRequired.Error(), nil)
-	case errors.Is(err, apperror.ErrNoFieldsProvided):
-		response.Error(ctx, http.StatusBadRequest, "VALIDATION_ERROR", apperror.ErrNoFieldsProvided.Error(), nil)
-	case errors.Is(err, apperror.ErrTodoNotFound):
+	message := err.Error()
+
+	switch message {
+	case "id inválido":
+		response.Error(ctx, http.StatusBadRequest, "INVALID_ID", message, nil)
+	case "título é obrigatório", "conteúdo é obrigatório", "ao menos um campo deve ser informado":
+		response.Error(ctx, http.StatusBadRequest, "VALIDATION_ERROR", message, nil)
+	case "Nenhum registro encontro.", "não há elemento com tal id", "Nenhum registro afetado":
 		response.Error(ctx, http.StatusNotFound, "TODO_NOT_FOUND", "todo não encontrado", nil)
 	default:
 		response.InternalServerError(ctx)

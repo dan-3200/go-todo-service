@@ -11,11 +11,6 @@ import (
 
 func TestFromEnvironmentLoadsAllSettings(t *testing.T) {
 	t.Setenv("API_PORT", "9000")
-	t.Setenv("API_READ_HEADER_TIMEOUT", "3s")
-	t.Setenv("API_READ_TIMEOUT", "20s")
-	t.Setenv("API_WRITE_TIMEOUT", "25s")
-	t.Setenv("API_IDLE_TIMEOUT", "2m")
-	t.Setenv("JWT_SECRET", "test-secret")
 	t.Setenv("POSTGRES_USER", "user")
 	t.Setenv("POSTGRES_PASSWORD", "password")
 	t.Setenv("POSTGRES_HOST", "host")
@@ -34,14 +29,7 @@ func TestFromEnvironmentLoadsAllSettings(t *testing.T) {
 
 	settings := config.FromEnvironment()
 
-	require.Equal(t, config.ServerConfig{
-		Port:              "9000",
-		ReadHeaderTimeout: 3 * time.Second,
-		ReadTimeout:       20 * time.Second,
-		WriteTimeout:      25 * time.Second,
-		IdleTimeout:       2 * time.Minute,
-	}, settings.Server)
-	require.Equal(t, config.AuthConfig{JWTSecret: "test-secret"}, settings.Auth)
+	require.Equal(t, "9000", settings.Server.Port)
 	require.Equal(t, config.PostgresConfig{
 		User:            "user",
 		Password:        "password",
@@ -65,11 +53,6 @@ func TestFromEnvironmentLoadsAllSettings(t *testing.T) {
 
 func TestFromEnvironmentUsesDefaultAPIPort(t *testing.T) {
 	t.Setenv("API_PORT", "")
-	t.Setenv("API_READ_HEADER_TIMEOUT", "invalid")
-	t.Setenv("API_READ_TIMEOUT", "0s")
-	t.Setenv("API_WRITE_TIMEOUT", "-1s")
-	t.Setenv("API_IDLE_TIMEOUT", "invalid")
-	t.Setenv("JWT_SECRET", "")
 	t.Setenv("POSTGRES_MAX_OPEN_CONNS", "invalid")
 	t.Setenv("POSTGRES_MAX_IDLE_CONNS", "-1")
 	t.Setenv("POSTGRES_CONN_MAX_LIFETIME", "invalid")
@@ -83,14 +66,7 @@ func TestFromEnvironmentUsesDefaultAPIPort(t *testing.T) {
 
 	settings := config.FromEnvironment()
 
-	require.Equal(t, config.ServerConfig{
-		Port:              "8200",
-		ReadHeaderTimeout: 5 * time.Second,
-		ReadTimeout:       15 * time.Second,
-		WriteTimeout:      15 * time.Second,
-		IdleTimeout:       time.Minute,
-	}, settings.Server)
-	require.Empty(t, settings.Auth.JWTSecret)
+	require.Equal(t, "8200", settings.Server.Port)
 	require.Equal(t, 10, settings.Postgres.MaxOpenConns)
 	require.Equal(t, 2, settings.Postgres.MaxIdleConns)
 	require.Equal(t, 30*time.Minute, settings.Postgres.ConnMaxLifetime)
@@ -100,5 +76,5 @@ func TestFromEnvironmentUsesDefaultAPIPort(t *testing.T) {
 	require.Equal(t, "localhost:4317", settings.Telemetry.CollectorAddr)
 	require.True(t, settings.Telemetry.CollectorInsecure)
 	require.Equal(t, 5*time.Second, settings.Telemetry.ShutdownTimeout)
-	require.InDelta(t, 1.0, settings.Telemetry.TracerRatio, 1e-9)
+	require.Equal(t, 1.0, settings.Telemetry.TracerRatio)
 }

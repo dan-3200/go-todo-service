@@ -95,10 +95,9 @@ type Todo struct {
 ```bash
 git clone https://github.com/DAN-3200/go-todo-service.git
 cd go-todo-service
-cp .env.example .env
 make db-main
 make db-schema
-make run
+go run ./cmd
 ```
 
 > [!IMPORTANT]
@@ -125,14 +124,6 @@ dev:
 # rodar todos os tests (unitários e integração)
 test: 
 	go test ./...
-
-# executar analise estatica, seguranca e formatacao
-lint:
-	go tool -modfile=golangci-lint.mod golangci-lint run
-
-# aplicar correcoes automaticas disponibilizadas pelos linters
-lint-fix:
-	go tool -modfile=golangci-lint.mod golangci-lint run --fix
 
 # gerar código SQLc versionado
 generate:
@@ -161,40 +152,6 @@ db-schema:
 > Os testes de integração PostgreSQL usam Testcontainers e iniciam uma instância
 > efêmera de `postgres:16-alpine`. Portanto, `go test ./...` requer Docker disponível.
 
-## Variáveis de ambiente
-
-Use `.env.example` como base e nunca versione o `.env`, pois ele contém credenciais e
-o segredo de autenticação. Valores de duração seguem o formato do Go, como `500ms`,
-`15s`, `5m` ou `1h`.
-
-| Variável | Obrigatória | Padrão | Descrição |
-| --- | --- | --- | --- |
-| `API_PORT` | Não | `8200` | Porta HTTP da aplicação. |
-| `API_READ_HEADER_TIMEOUT` | Não | `5s` | Limite para leitura dos headers HTTP. |
-| `API_READ_TIMEOUT` | Não | `15s` | Limite para leitura completa da requisição. |
-| `API_WRITE_TIMEOUT` | Não | `15s` | Limite para escrita da resposta. |
-| `API_IDLE_TIMEOUT` | Não | `60s` | Limite para conexões HTTP ociosas. |
-| `JWT_SECRET` | Sim | — | Segredo HS256 com no mínimo 32 bytes. |
-| `POSTGRES_USER` | Sim | — | Usuário do PostgreSQL. |
-| `POSTGRES_PASSWORD` | Sim | — | Senha do PostgreSQL. |
-| `POSTGRES_DB` | Sim | — | Nome do banco de dados. |
-| `POSTGRES_HOST` | Sim | — | Host do PostgreSQL; no Compose, use `database`. |
-| `POSTGRES_PORT` | Sim | — | Porta do PostgreSQL; no Compose, use `5432`. |
-| `POSTGRES_MAX_OPEN_CONNS` | Não | `10` | Máximo de conexões abertas no pool. |
-| `POSTGRES_MAX_IDLE_CONNS` | Não | `2` | Máximo de conexões ociosas no pool. |
-| `POSTGRES_CONN_MAX_LIFETIME` | Não | `30m` | Vida máxima de uma conexão. |
-| `POSTGRES_CONN_MAX_IDLE_TIME` | Não | `5m` | Tempo máximo ocioso de uma conexão. |
-| `OTEL_ENABLED` | Não | `false` | Habilita a exportação OpenTelemetry. |
-| `OTEL_SERVICE_NAME` | Não | `go-todo-service` | Nome do serviço na telemetria. |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | Não | `localhost:4317` | Endereço gRPC do collector OTLP. |
-| `OTEL_COLLECTOR_INSECURE` | Não | `true` | Usa conexão sem TLS com o collector. |
-| `OTEL_SHUTDOWN_TIMEOUT` | Não | `5s` | Limite para encerrar os providers de telemetria. |
-| `OTEL_TRACER_RATIO` | Não | `1.0` | Taxa de amostragem de traces, maior que zero e até `1.0`. |
-
-Variáveis opcionais vazias, inválidas ou com durações não positivas usam os valores
-padrão. Antes de iniciar a API, substitua `JWT_SECRET` por um segredo aleatório com
-pelo menos 32 bytes.
-
 
 ## API Endpoints
 | Route | Descrição | Autenticação |
@@ -210,6 +167,31 @@ pelo menos 32 bytes.
 As rotas protegidas exigem `Authorization: Bearer <token>` com um JWT HS256 válido e
 não expirado. A API apenas valida tokens emitidos externamente; ela não possui endpoint
 de login ou emissão de tokens.
+
+## Formato das respostas
+
+Toda resposta da API usa um envelope com o status HTTP, timestamp e dados ou erro.
+
+```json
+{
+  "success": true,
+  "status": 200,
+  "data": {},
+  "timestamp": "2026-10-24T12:00:00Z"
+}
+```
+
+```json
+{
+  "success": false,
+  "status": 400,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "título é obrigatório"
+  },
+  "timestamp": "2026-10-24T12:00:00Z"
+}
+```
 
 ## Formato das respostas
 

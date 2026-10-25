@@ -14,7 +14,7 @@ type DatabasePinger interface {
 	Ping() error
 }
 
-func NewServer(handler *TodoHandler, database DatabasePinger, authMiddleware gin.HandlerFunc) *gin.Engine {
+func NewServer(handler *TodoHandler, database DatabasePinger) *gin.Engine {
 	engine := gin.New()
 	engine.HandleMethodNotAllowed = true
 	engine.Use(gin.Logger(), gin.CustomRecovery(handlePanic))
@@ -22,14 +22,14 @@ func NewServer(handler *TodoHandler, database DatabasePinger, authMiddleware gin
 
 	engine.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: false,
 		MaxAge:           12 * time.Hour,
 	}))
 
-	registerTodoRoutes(engine, handler, authMiddleware)
+	registerTodoRoutes(engine, handler)
 
 	engine.GET("/readiness", func(ctx *gin.Context) {
 		if database.Ping() != nil {

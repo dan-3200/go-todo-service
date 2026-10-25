@@ -2,9 +2,8 @@ package http
 
 import "github.com/gin-gonic/gin"
 
-func registerTodoRoutes(engine *gin.Engine, handler *TodoHandler, authMiddleware gin.HandlerFunc) {
+func registerTodoRoutes(engine *gin.Engine, handler *TodoHandler) {
 	todo := engine.Group("/todo")
-	todo.Use(authMiddleware)
 	{
 		todo.POST("", handler.Create)
 		todo.GET("/:id", handler.Get)
