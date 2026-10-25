@@ -55,7 +55,7 @@ func TestJWTAllowsTokenWithoutSubject(t *testing.T) {
 	require.Equal(t, http.StatusOK, response.Code)
 	var payload map[string]string
 	require.NoError(t, json.Unmarshal(response.Body.Bytes(), &payload))
-	require.Equal(t, "", payload["subject"])
+	require.Empty(t, payload["subject"])
 }
 
 func TestJWTRejectsInvalidAuthentication(t *testing.T) {
@@ -97,7 +97,7 @@ func TestJWTRejectsInvalidAuthentication(t *testing.T) {
 			var payload map[string]any
 			require.NoError(t, json.Unmarshal(response.Body.Bytes(), &payload))
 			require.Equal(t, false, payload["success"])
-			require.Equal(t, float64(http.StatusUnauthorized), payload["status"])
+			require.EqualValues(t, http.StatusUnauthorized, payload["status"])
 			errorPayload := payload["error"].(map[string]any)
 			require.Equal(t, "UNAUTHORIZED", errorPayload["code"])
 			require.Equal(t, "token de autenticação ausente ou inválido", errorPayload["message"])
@@ -118,7 +118,7 @@ func performProtectedRequest(t *testing.T, headers []string) *httptest.ResponseR
 		ctx.JSON(http.StatusOK, gin.H{"subject": subject})
 	})
 
-	request := httptest.NewRequest(http.MethodGet, "/protected", nil)
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/protected", nil)
 	for _, header := range headers {
 		request.Header.Add("Authorization", header)
 	}

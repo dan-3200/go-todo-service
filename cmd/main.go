@@ -58,7 +58,7 @@ func main() {
 		return
 	}
 
-	connection, err := postgres.Open(settings.Postgres)
+	connection, err := postgres.Open(appCtx, settings.Postgres)
 	if err != nil {
 		logger.ErrorContext(appCtx, "falha ao conectar com o banco de dados", slog.Any("error", err))
 		return
@@ -69,7 +69,7 @@ func main() {
 		}
 	}()
 
-	repository, err := postgres.NewTodoRepository(connection)
+	repository, err := postgres.NewTodoRepository(appCtx, connection)
 	if err != nil {
 		logger.ErrorContext(appCtx, "falha ao inicializar repositório", slog.Any("error", err))
 		return

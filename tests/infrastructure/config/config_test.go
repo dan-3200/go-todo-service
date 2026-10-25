@@ -80,5 +80,5 @@ func TestFromEnvironmentUsesDefaultAPIPort(t *testing.T) {
 	require.Equal(t, "localhost:4317", settings.Telemetry.CollectorAddr)
 	require.True(t, settings.Telemetry.CollectorInsecure)
 	require.Equal(t, 5*time.Second, settings.Telemetry.ShutdownTimeout)
-	require.Equal(t, 1.0, settings.Telemetry.TracerRatio)
+	require.InDelta(t, 1.0, settings.Telemetry.TracerRatio, 1e-9)
 }

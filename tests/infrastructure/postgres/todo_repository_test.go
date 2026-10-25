@@ -23,7 +23,7 @@ func newMockRepository(t *testing.T) (*postgres.TodoRepository, sqlmock.Sqlmock)
 	t.Cleanup(func() { _ = database.Close() })
 
 	mock.ExpectPing()
-	repository, err := postgres.NewTodoRepository(database)
+	repository, err := postgres.NewTodoRepository(t.Context(), database)
 	require.NoError(t, err)
 
 	return repository, mock

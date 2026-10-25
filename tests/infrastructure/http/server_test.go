@@ -73,7 +73,7 @@ func newTestServer(repository *fakeRepository, pinger fakePinger) http.Handler {
 }
 
 func performRequest(server http.Handler, method, target string, body []byte) *httptest.ResponseRecorder {
-	request := httptest.NewRequest(method, target, bytes.NewReader(body))
+	request := httptest.NewRequestWithContext(context.Background(), method, target, bytes.NewReader(body))
 	if body != nil {
 		request.Header.Set("Content-Type", "application/json")
 	}
@@ -91,7 +91,7 @@ func performAuthenticatedRequest(t *testing.T, server http.Handler, method, targ
 	signed, err := token.SignedString([]byte(testJWTSecret))
 	require.NoError(t, err)
 
-	request := httptest.NewRequest(method, target, bytes.NewReader(body))
+	request := httptest.NewRequestWithContext(t.Context(), method, target, bytes.NewReader(body))
 	request.Header.Set("Authorization", "Bearer "+signed)
 	if body != nil {
 		request.Header.Set("Content-Type", "application/json")
@@ -108,7 +108,7 @@ func requireEnvelope(t *testing.T, response *httptest.ResponseRecorder, status i
 	var payload map[string]any
 	require.NoError(t, json.Unmarshal(response.Body.Bytes(), &payload))
 	require.Equal(t, success, payload["success"])
-	require.Equal(t, float64(status), payload["status"])
+	require.EqualValues(t, status, payload["status"])
 
 	timestamp, ok := payload["timestamp"].(string)
 	require.True(t, ok)
@@ -136,7 +136,7 @@ func TestCreateTodoContract(t *testing.T) {
 
 	payload := requireEnvelope(t, response, http.StatusOK, true)
 	data := payload["data"].(map[string]any)
-	require.Equal(t, float64(10), data["id"])
+	require.EqualValues(t, 10, data["id"])
 	require.Equal(t, "ToDo Criado", data["message"])
 	require.Equal(t, "title", repository.created.Title)
 	require.Equal(t, "content", repository.created.Content)
@@ -164,7 +164,7 @@ func TestGetTodoContract(t *testing.T) {
 
 	payload := requireEnvelope(t, response, http.StatusOK, true)
 	data := payload["data"].(map[string]any)
-	require.Equal(t, float64(1), data["id"])
+	require.EqualValues(t, 1, data["id"])
 	require.Equal(t, "title", data["title"])
 	require.Equal(t, "content", data["content"])
 	require.Equal(t, true, data["status"])

@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 
@@ -9,7 +10,7 @@ import (
 	"app/internal/infrastructure/config"
 )
 
-func Open(settings config.PostgresConfig) (*sql.DB, error) {
+func Open(ctx context.Context, settings config.PostgresConfig) (*sql.DB, error) {
 	uri := fmt.Sprintf(
 		"postgres://%s:%s@%s:%s/%s?sslmode=disable",
 		settings.User,
@@ -29,7 +30,7 @@ func Open(settings config.PostgresConfig) (*sql.DB, error) {
 	connection.SetConnMaxLifetime(settings.ConnMaxLifetime)
 	connection.SetConnMaxIdleTime(settings.ConnMaxIdleTime)
 
-	if err := connection.Ping(); err != nil {
+	if err := connection.PingContext(ctx); err != nil {
 		_ = connection.Close()
 		return nil, fmt.Errorf("erro ao pingar o banco de dados: %w", err)
 	}

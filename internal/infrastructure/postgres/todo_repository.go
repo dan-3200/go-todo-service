@@ -18,8 +18,8 @@ type TodoRepository struct {
 
 var _ ports.TodoRepository = (*TodoRepository)(nil)
 
-func NewTodoRepository(connection *sql.DB) (*TodoRepository, error) {
-	if err := connection.Ping(); err != nil {
+func NewTodoRepository(ctx context.Context, connection *sql.DB) (*TodoRepository, error) {
+	if err := connection.PingContext(ctx); err != nil {
 		return &TodoRepository{}, err
 	}
 

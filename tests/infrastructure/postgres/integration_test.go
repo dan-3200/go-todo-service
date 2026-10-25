@@ -80,7 +80,7 @@ func startIntegrationDatabase() error {
 		return err
 	}
 
-	integrationRepository, err = infrastructurepostgres.NewTodoRepository(integrationDatabase)
+	integrationRepository, err = infrastructurepostgres.NewTodoRepository(ctx, integrationDatabase)
 	if err != nil {
 		_ = stopIntegrationDatabase()
 		return err
@@ -157,7 +157,7 @@ func TestOpenConfiguresConnectionPool(t *testing.T) {
 	host, port, err := net.SplitHostPort(connectionURL.Host)
 	require.NoError(t, err)
 
-	connection, err := infrastructurepostgres.Open(config.PostgresConfig{
+	connection, err := infrastructurepostgres.Open(t.Context(), config.PostgresConfig{
 		User:            "todo",
 		Password:        "todo",
 		Host:            host,
