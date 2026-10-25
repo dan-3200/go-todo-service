@@ -58,7 +58,7 @@ Testcontainers.
 ├── go.sum                       # Hash das dependências
 ├── .env.example                 # Variáveis de ambiente
 ├── Makefile                     # Automação
-└── README.md
+└── readme.md
 ```
 ---
 
@@ -154,13 +154,44 @@ db-schema:
 
 
 ## API Endpoints
-| Route                   | Descrição                                  |
-|-------------------------|---------------------------------------------|
-| <kbd>POST /todo</kbd>     | Criar uma nova tarefa                     |
-| <kbd>GET /todo/:id</kbd>  | Buscar tarefa específica por ID          |
-| <kbd>GET /todo</kbd>      | Listar todas as tarefas                  |
-| <kbd>PATCH /todo/:id</kbd>| Editar uma tarefa existente por ID   |
-| <kbd>DELETE /todo/:id</kbd>| Remover uma tarefa existente por ID     |
+| Route | Descrição | Autenticação |
+| --- | --- | --- |
+| <kbd>POST /todo</kbd> | Criar uma nova tarefa | JWT |
+| <kbd>GET /todo/:id</kbd> | Buscar tarefa específica por ID | JWT |
+| <kbd>GET /todo</kbd> | Listar todas as tarefas | JWT |
+| <kbd>PATCH /todo/:id</kbd> | Editar uma tarefa existente por ID | JWT |
+| <kbd>DELETE /todo/:id</kbd> | Remover uma tarefa existente por ID | JWT |
+| <kbd>GET /healthz</kbd> | Verificar a saúde da aplicação | Pública |
+| <kbd>GET /readiness</kbd> | Verificar aplicação e PostgreSQL | Pública |
+
+As rotas protegidas exigem `Authorization: Bearer <token>` com um JWT HS256 válido e
+não expirado. A API apenas valida tokens emitidos externamente; ela não possui endpoint
+de login ou emissão de tokens.
+
+## Formato das respostas
+
+Toda resposta da API usa um envelope com o status HTTP, timestamp e dados ou erro.
+
+```json
+{
+  "success": true,
+  "status": 200,
+  "data": {},
+  "timestamp": "2026-10-24T12:00:00Z"
+}
+```
+
+```json
+{
+  "success": false,
+  "status": 400,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "título é obrigatório"
+  },
+  "timestamp": "2026-10-24T12:00:00Z"
+}
+```
 
 ## Formato das respostas
 

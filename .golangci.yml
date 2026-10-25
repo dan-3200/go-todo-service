@@ -1,0 +1,25 @@
+version: "2"
+
+run:
+  timeout: 5m
+  modules-download-mode: readonly
+
+linters:
+  default: standard
+  enable:
+    - bodyclose
+    - errorlint
+    - gosec
+    - loggercheck
+    - noctx
+    - nolintlint
+    - rowserrcheck
+    - sloglint
+    - spancheck
+    - sqlclosecheck
+    - testifylint
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
